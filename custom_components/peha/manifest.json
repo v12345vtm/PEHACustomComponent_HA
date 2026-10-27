@@ -1,0 +1,9 @@
+{
+  "domain": "peha",
+  "name": "Peha PHC",
+  "config_flow": true,
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "requirements": ["pyserial-asyncio>=0.6"],
+  "version": "1.1.0"
+}
