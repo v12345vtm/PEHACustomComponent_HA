@@ -1,0 +1,72 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect Peha PHC",
+        "description": "USB cable = STM control unit (sends commands). Bus dongle = RS485 bus (receives all traffic). Stop Node-RED while these ports are still used by it.",
+        "data": {
+          "stm_port": "USB cable (STM) port",
+          "bus_port": "Bus dongle (RS485) port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "One of the ports cannot be opened. Check the path and whether another app is using it."
+    },
+    "abort": {
+      "already_configured": "This combination of ports is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Manage Peha PHC",
+        "menu_options": {
+          "relais": "Add relay module (8 channels)",
+          "rolluik": "Add roller shutter module (4 channels)",
+          "ingang": "Add input module (16 inputs)",
+          "virtueel": "Add virtual button",
+          "verwijder": "Remove module",
+          "poorten": "Change ports"
+        }
+      },
+      "relais": {
+        "title": "Add relay module",
+        "data": {"phc": "PHC number (0-31)", "naam": "Name"}
+      },
+      "rolluik": {
+        "title": "Add roller shutter module",
+        "data": {"phc": "PHC number (0-31)", "naam": "Name"}
+      },
+      "ingang": {
+        "title": "Add input module",
+        "data": {"phc": "PHC number (0-31)", "naam": "Name"}
+      },
+      "virtueel": {
+        "title": "Add virtual button",
+        "data": {
+          "phc": "PHC number of the input module",
+          "kanaal": "Input (channel 0-15)",
+          "functie": "Function",
+          "naam": "Name"
+        }
+      },
+      "verwijder": {
+        "title": "Remove module",
+        "data": {"module": "Module"}
+      },
+      "poorten": {
+        "title": "Change ports",
+        "data": {"stm_port": "USB cable (STM) port", "bus_port": "Bus dongle (RS485) port"}
+      }
+    },
+    "error": {
+      "adres_bezet": "This PHC number is already in use (relay and shutter modules share the same address).",
+      "dubbel": "This virtual button already exists.",
+      "cannot_connect": "One of the ports cannot be opened."
+    },
+    "abort": {
+      "geen_modules": "There are no modules to remove."
+    }
+  }
+}

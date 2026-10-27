@@ -1,0 +1,72 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Peha PHC koppelen",
+        "description": "USB-kabel = STM-stuureenheid (commando's sturen). Busdongle = RS485-bus (alles ontvangen). Stop Node-RED zolang deze poorten nog door Node-RED worden gebruikt.",
+        "data": {
+          "stm_port": "Poort USB-kabel (STM)",
+          "bus_port": "Poort busdongle (RS485)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Een van de poorten kan niet geopend worden. Controleer het pad en of geen andere app de poort gebruikt."
+    },
+    "abort": {
+      "already_configured": "Deze combinatie van poorten is al ingesteld."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Peha PHC beheren",
+        "menu_options": {
+          "relais": "Relais toevoegen (8 kanalen)",
+          "rolluik": "Rolluik toevoegen (4 kanalen)",
+          "ingang": "Ingangsmodule toevoegen (16 ingangen)",
+          "virtueel": "Virtuele knop toevoegen",
+          "verwijder": "Module verwijderen",
+          "poorten": "Poorten wijzigen"
+        }
+      },
+      "relais": {
+        "title": "Relais toevoegen",
+        "data": {"phc": "PHC-nummer (0-31)", "naam": "Naam"}
+      },
+      "rolluik": {
+        "title": "Rolluik toevoegen",
+        "data": {"phc": "PHC-nummer (0-31)", "naam": "Naam"}
+      },
+      "ingang": {
+        "title": "Ingangsmodule toevoegen",
+        "data": {"phc": "PHC-nummer (0-31)", "naam": "Naam"}
+      },
+      "virtueel": {
+        "title": "Virtuele knop toevoegen",
+        "data": {
+          "phc": "PHC-nummer van de ingangsmodule",
+          "kanaal": "Ingang (kanaal 0-15)",
+          "functie": "Functie",
+          "naam": "Naam"
+        }
+      },
+      "verwijder": {
+        "title": "Module verwijderen",
+        "data": {"module": "Module"}
+      },
+      "poorten": {
+        "title": "Poorten wijzigen",
+        "data": {"stm_port": "Poort USB-kabel (STM)", "bus_port": "Poort busdongle (RS485)"}
+      }
+    },
+    "error": {
+      "adres_bezet": "Dit PHC-nummer is al in gebruik (relais en rolluik delen hetzelfde adres).",
+      "dubbel": "Deze virtuele knop bestaat al.",
+      "cannot_connect": "Een van de poorten kan niet geopend worden."
+    },
+    "abort": {
+      "geen_modules": "Er zijn geen modules om te verwijderen."
+    }
+  }
+}

@@ -1,0 +1,49 @@
+stuur_commando:
+  name: Stuur commando (ruw)
+  description: Stuurt een ruw commando naar een module via de STM-stuureenheid. Handig om te testen.
+  fields:
+    adres:
+      name: Adres
+      description: Bus-adres in hex, bijvoorbeeld 40 (relais 0), 42 (rolluik 2) of 01 (ingang 1).
+      required: true
+      example: "40"
+      selector:
+        text:
+    data:
+      name: Data
+      description: Payload in hex, bijvoorbeeld 02 (relais 0 aan) of 06 07 2C 01 (rolluik 0 omlaag, 30 s).
+      required: true
+      example: "02"
+      selector:
+        text:
+
+virtuele_ingang:
+  name: Virtuele ingang
+  description: Simuleert een klik op een ingang van een ingangsmodule.
+  fields:
+    adres:
+      name: PHC-nummer ingangsmodule
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 31
+          mode: box
+    kanaal:
+      name: Kanaal
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 15
+          mode: box
+    functie:
+      name: Functie
+      required: true
+      default: kort
+      selector:
+        select:
+          options:
+            - kort
+            - lang
+            - extra_lang
