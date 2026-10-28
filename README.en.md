@@ -4,7 +4,7 @@
 
 Home Assistant integration for the Peha PHC bus. Control relays, roller shutters and virtual buttons from Home Assistant, and see the inputs and the bus traffic.
 
-> **Test version 0.1.1.** This integration is new and looking for testers with a real Peha PHC installation. Please read the warning below first.
+> **Test version 0.1.2.** This integration is new and looking for testers with a real Peha PHC installation. Please read the warning below first.
 
 ## Warning
 
@@ -117,6 +117,12 @@ The two log sensors have an attribute `pakketten` (a list, as JSON) and an attri
 - If no end message arrives, a fallback closes the movement after the run time plus 5 seconds.
 - After a restart, the integration restores the last known status from the sensor.
 
+## Inputs and the status request
+
+An input button sends several events in a row. A short press, released within one second, gives `kort_ingedrukt` followed by `kort_losgelaten`. A long press gives `kort_ingedrukt`, then `lang_ingedrukt` after more than one second, and possibly `extra_lang_ingedrukt` after more than two seconds. Releasing gives `lang_losgelaten`.
+
+The integration requests the status of the input module only after the button is released, after 1.5 seconds. While the button is pressed it requests nothing, because the module still reports "high" at that moment, and that reply can stay wrong after the release. If no release event arrives, the integration still requests the status after 10 seconds. Both times are set in `const.py`.
+
 ## Events and services
 
 When an input action happens, the integration fires the event `peha_phc_ingang`. It contains the fields `module`, `adres`, `naam`, `kanaal` and `actie`. The action is `kort_ingedrukt`, `kort_losgelaten`, `lang_ingedrukt`, `lang_losgelaten`, `extra_lang_ingedrukt` or `losgelaten`.
@@ -124,7 +130,7 @@ When an input action happens, the integration fires the event `peha_phc_ingang`.
 There are two services:
 
 - `peha_phc.stuur_commando` sends a raw command, with the fields `adres` and `data` in hex. Useful for testing.
-- `peha_phc.virtuele_ingang` sends a virtual function, with the fields `adres` (the PHC number), `kanaal` and `functie`.
+- `peha_phc.virtuele_ingang` sends a virtual function, with the fields `adres` (the PHC number), `kanaal` and `functie`. The function can be the key (`kort`), the name (`aan > 0 seconden`) or the number (`2`), as in the Node-RED flow.
 
 ## Logs and troubleshooting
 
