@@ -1,4 +1,6 @@
 {
+  "_bestand": "en.json",
+  "_versie": "0.1.1",
   "config": {
     "step": {
       "user": {
@@ -32,15 +34,24 @@
       },
       "relais": {
         "title": "Add relay module",
-        "data": {"phc": "PHC number (0-31)", "naam": "Name"}
+        "data": {
+          "phc": "PHC number (0-31)",
+          "naam": "Name"
+        }
       },
       "rolluik": {
         "title": "Add roller shutter module",
-        "data": {"phc": "PHC number (0-31)", "naam": "Name"}
+        "data": {
+          "phc": "PHC number (0-31)",
+          "naam": "Name"
+        }
       },
       "ingang": {
         "title": "Add input module",
-        "data": {"phc": "PHC number (0-31)", "naam": "Name"}
+        "data": {
+          "phc": "PHC number (0-31)",
+          "naam": "Name"
+        }
       },
       "virtueel": {
         "title": "Add virtual button",
@@ -53,11 +64,16 @@
       },
       "verwijder": {
         "title": "Remove module",
-        "data": {"module": "Module"}
+        "data": {
+          "module": "Module"
+        }
       },
       "poorten": {
         "title": "Change ports",
-        "data": {"stm_port": "USB cable (STM) port", "bus_port": "Bus dongle (RS485) port"}
+        "data": {
+          "stm_port": "USB cable (STM) port",
+          "bus_port": "Bus dongle (RS485) port"
+        }
       }
     },
     "error": {

@@ -1,5 +1,7 @@
+# const.py - Peha PHC versie 0.1.1
 """Constanten voor de Peha PHC-integratie."""
 
+SW_VERSION = "0.1.1"
 DOMAIN = "peha_phc"
 
 # Sleutels in de config entry
@@ -45,23 +47,23 @@ ADRES_UITGANG = 0x40
 DEFAULT_LOOPTIJDEN = (20.0, 25.0, 30.0, 16.0)
 MIN_LOOPTIJD = 3
 MAX_LOOPTIJD = 180
-TIMER_MARGE = 5.0  # extra seconden voordat een beweging zonder bericht als klaar wordt gezien
+TIMER_MARGE = 5.0  # extra seconden voordat een beweging zonder eindmelding als klaar telt
 PRIORITEIT = 7
 
-# Virtuele knop: functie -> (indrukken, loslaten, wachttijd in seconden)
+# Virtuele functies: sleutel -> tekst in de keuzelijst. De bijbehorende code staat in protocol.VIRTUAL_CODES.
 VIRTUAL_FUNCTIES = {
-    "kort": (2, 3, 0.2),
-    "lang": (4, 5, 1.5),
-    "extra_lang": (6, 7, 2.5),
-}
-VIRTUAL_LABELS = {
-    "kort": "Kort indrukken",
-    "lang": "Lang indrukken (> 1 s)",
-    "extra_lang": "Extra lang (> 2 s)",
+    "kort": "Aan > 0 seconden",
+    "uit_lt_1": "Uit < 1 seconden",
+    "lang": "Aan > 1 seconden",
+    "uit_gt_1": "Uit > 1 seconden",
+    "extra_lang": "Aan > 2 seconden",
 }
 
 # Naam van het event dat bij elke ingangsactie wordt afgevuurd
 EVENT_INGANG = "peha_phc_ingang"
+
+# Aantal regels in de logsensoren (verstuurde en verwerkte pakketten)
+LOG_LENGTE = 20
 
 
 def module_address(kind: str, phc: int) -> int:

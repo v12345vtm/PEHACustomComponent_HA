@@ -1,3 +1,4 @@
+# __init__.py - Peha PHC versie 0.1.1
 """Peha PHC: koppeling met de Peha PHC-bus via de STM-stuureenheid en een busdongle."""
 from __future__ import annotations
 
@@ -85,6 +86,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _async_cleanup_devices(hass, entry, hub)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = hub
 
+    # De poortschakelaars herstellen hun stand vóór de poorten geopend worden.
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await hub.async_start()
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
@@ -104,9 +106,13 @@ async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 
 def _async_cleanup_devices(hass: HomeAssistant, entry: ConfigEntry, hub: PhcHub) -> None:
-    """Verwijdert apparaten van modules die uit de configuratie zijn gehaald."""
+    """Verwijdert apparaten van modules die uit de configuratie zijn gehaald.
+
+    Het hub-apparaat (poorten en logs) blijft altijd staan.
+    """
     registry = dr.async_get(hass)
-    keep = {(DOMAIN, m.device_id) for m in hub.modules.values()}
+    keep = {(DOMAIN, entry.entry_id)}
+    keep |= {(DOMAIN, m.device_id) for m in hub.modules.values()}
     keep |= {(DOMAIN, module_key(v)) for v in hub.virtual_buttons}
     for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
         ids = {identifier for identifier in device.identifiers if identifier[0] == DOMAIN}

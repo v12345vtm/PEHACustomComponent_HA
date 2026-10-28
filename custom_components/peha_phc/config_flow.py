@@ -1,3 +1,4 @@
+# config_flow.py - Peha PHC versie 0.1.1
 """Configuratie- en optiesflow voor Peha PHC."""
 from __future__ import annotations
 
@@ -38,7 +39,7 @@ from .const import (
     PHC_MAX,
     PHC_MIN,
     SERIAL_OPTIONS,
-    VIRTUAL_LABELS,
+    VIRTUAL_FUNCTIES,
     module_address,
     module_key,
 )
@@ -81,7 +82,7 @@ def _kanaal_field() -> NumberSelector:
 
 
 def _functie_field() -> SelectSelector:
-    options = [SelectOptionDict(value=k, label=v) for k, v in VIRTUAL_LABELS.items()]
+    options = [SelectOptionDict(value=k, label=v) for k, v in VIRTUAL_FUNCTIES.items()]
     return SelectSelector(SelectSelectorConfig(options=options, mode=SelectSelectorMode.DROPDOWN))
 
 
@@ -98,7 +99,7 @@ def _label(item: dict) -> str:
     if item[CONF_TYPE] == MODULE_VIRTUEEL:
         return (
             f"{item[CONF_NAAM]} (virtueel, ingang {item[CONF_PHC]}, "
-            f"kanaal {item[CONF_KANAAL]}, {item[CONF_FUNCTIE]})"
+            f"kanaal {item[CONF_KANAAL]}, {VIRTUAL_FUNCTIES.get(item[CONF_FUNCTIE], item[CONF_FUNCTIE])})"
         )
     return f"{item[CONF_NAAM]} ({MODULE_LABELS[item[CONF_TYPE]]} {item[CONF_PHC]})"
 

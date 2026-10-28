@@ -1,4 +1,5 @@
-"""Knoppen: status opvragen per module, rolluik omhoog/omlaag en virtuele ingangen (klik)."""
+# button.py - Peha PHC versie 0.1.1
+"""Knoppen: status opvragen, rolluik omhoog/omlaag en virtuele ingangen (klik)."""
 from __future__ import annotations
 
 from homeassistant.components.button import ButtonEntity
@@ -15,6 +16,7 @@ from .const import (
     DOMAIN,
     MODULE_INGANG,
     MODULE_ROLLUIK,
+    SW_VERSION,
     module_address,
     virtual_device_id,
 )
@@ -46,11 +48,7 @@ class PhcStatusKnop(PhcModuleEntity, ButtonEntity):
 
 
 class PhcRolluikKnop(PhcModuleEntity, ButtonEntity):
-    """Omhoog of omlaag, die altijd een commando stuurt.
-
-    De standaard covers-bediening van Home Assistant zet de knop 'dicht' meestal uit zodra
-    de cover als dicht gemeld staat. Met deze knoppen kun je altijd verder omlaag of omhoog.
-    """
+    """Vaste omhoog- of omlaagknop. Stuurt altijd een commando, ook tijdens een beweging."""
 
     def __init__(self, hub: PhcHub, module, channel: int, action: str) -> None:
         super().__init__(hub, module, f"kanaal{channel}_{action}", f"Kanaal {channel} {action}")
@@ -63,7 +61,7 @@ class PhcRolluikKnop(PhcModuleEntity, ButtonEntity):
 
 
 class PhcVirtueleKnop(PhcHubEntity, ButtonEntity):
-    """Klik op een virtuele ingang: indrukken, wachten en loslaten."""
+    """Klik op een virtuele ingang: één commando, zoals de Node-RED IMD GENERATOR."""
 
     _attr_icon = "mdi:gesture-tap-button"
 
@@ -74,7 +72,9 @@ class PhcVirtueleKnop(PhcHubEntity, ButtonEntity):
             identifiers={(DOMAIN, virtual_device_id(cfg))},
             name=cfg[CONF_NAAM],
             manufacturer="Peha",
-            model=f"Virtuele ingang (adres 0x{module_address(MODULE_INGANG, cfg[CONF_PHC]):02X}, kanaal {cfg[CONF_KANAAL]})",
+            model=f"Virtuele ingang (adres 0x{module_address(MODULE_INGANG, cfg[CONF_PHC]):02X}, "
+                  f"kanaal {cfg[CONF_KANAAL]})",
+            sw_version=SW_VERSION,
         )
 
     async def async_press(self) -> None:

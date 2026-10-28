@@ -1,4 +1,6 @@
 {
+  "_bestand": "nl.json",
+  "_versie": "0.1.1",
   "config": {
     "step": {
       "user": {
@@ -32,15 +34,24 @@
       },
       "relais": {
         "title": "Relais toevoegen",
-        "data": {"phc": "PHC-nummer (0-31)", "naam": "Naam"}
+        "data": {
+          "phc": "PHC-nummer (0-31)",
+          "naam": "Naam"
+        }
       },
       "rolluik": {
         "title": "Rolluik toevoegen",
-        "data": {"phc": "PHC-nummer (0-31)", "naam": "Naam"}
+        "data": {
+          "phc": "PHC-nummer (0-31)",
+          "naam": "Naam"
+        }
       },
       "ingang": {
         "title": "Ingangsmodule toevoegen",
-        "data": {"phc": "PHC-nummer (0-31)", "naam": "Naam"}
+        "data": {
+          "phc": "PHC-nummer (0-31)",
+          "naam": "Naam"
+        }
       },
       "virtueel": {
         "title": "Virtuele knop toevoegen",
@@ -53,11 +64,16 @@
       },
       "verwijder": {
         "title": "Module verwijderen",
-        "data": {"module": "Module"}
+        "data": {
+          "module": "Module"
+        }
       },
       "poorten": {
         "title": "Poorten wijzigen",
-        "data": {"stm_port": "Poort USB-kabel (STM)", "bus_port": "Poort busdongle (RS485)"}
+        "data": {
+          "stm_port": "Poort USB-kabel (STM)",
+          "bus_port": "Poort busdongle (RS485)"
+        }
       }
     },
     "error": {

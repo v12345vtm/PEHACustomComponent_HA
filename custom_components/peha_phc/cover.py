@@ -1,10 +1,15 @@
-"""Rolluiken (JRM): 4 kanalen per module met open, dicht en stop."""
+# cover.py - Peha PHC versie 0.1.1
+"""Rolluiken (JRM): cover-entiteiten die altijd bedienbaar blijven.
+
+In rust staat de cover op onbekend, zodat Home Assistant geen knop grijs maakt. Tijdens een
+beweging staat hij op opening of closing. De echte status (open, closed, halted) staat als
+attribuut op de cover en in de sensor 'Kanaal N status'.
+"""
 from __future__ import annotations
 
 from homeassistant.components.cover import CoverDeviceClass, CoverEntity, CoverEntityFeature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import AANTAL_ROLLUIKEN, DOMAIN, MODULE_ROLLUIK
 from .entity import PhcModuleEntity
@@ -20,11 +25,8 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities: AddE
     )
 
 
-class PhcRolluik(PhcModuleEntity, CoverEntity, RestoreEntity):
-    """Geen positie: de module meldt alleen 'klaar' of 'gestopt'.
-
-    Commando's worden altijd verstuurd, ook tijdens een beweging.
-    """
+class PhcRolluik(PhcModuleEntity, CoverEntity):
+    """Cover per kanaal. Commando's gaan altijd naar de module, ook tijdens een beweging."""
 
     _attr_device_class = CoverDeviceClass.SHUTTER
     _attr_supported_features = (
@@ -34,16 +36,6 @@ class PhcRolluik(PhcModuleEntity, CoverEntity, RestoreEntity):
     def __init__(self, hub: PhcHub, module, channel: int) -> None:
         super().__init__(hub, module, f"kanaal{channel}", f"Kanaal {channel}")
         self._channel = channel
-
-    async def async_added_to_hass(self) -> None:
-        """Herstelt de laatst bekende positie na een herstart van Home Assistant."""
-        await super().async_added_to_hass()
-        last = await self.async_get_last_state()
-        if last is not None and self._cover.closed is None:
-            if last.state == "closed":
-                self._cover.closed = True
-            elif last.state == "open":
-                self._cover.closed = False
 
     @property
     def _cover(self):
@@ -58,8 +50,9 @@ class PhcRolluik(PhcModuleEntity, CoverEntity, RestoreEntity):
         return self._cover.moving == "omlaag"
 
     @property
-    def is_closed(self) -> bool | None:
-        return self._cover.closed
+    def is_closed(self) -> None:
+        """Altijd onbekend: in rust blijven de knoppen van Home Assistant dan aan."""
+        return None
 
     @property
     def extra_state_attributes(self) -> dict:

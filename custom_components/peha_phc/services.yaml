@@ -1,3 +1,4 @@
+# services.yaml - Peha PHC versie 0.1.1
 stuur_commando:
   name: Stuur commando (ruw)
   description: Stuurt een ruw commando naar een module via de STM-stuureenheid. Handig om te testen.
@@ -19,7 +20,7 @@ stuur_commando:
 
 virtuele_ingang:
   name: Virtuele ingang
-  description: Simuleert een klik op een ingang van een ingangsmodule.
+  description: Stuurt één virtueel commando naar een ingangsmodule, zoals de Node-RED IMD GENERATOR.
   fields:
     adres:
       name: PHC-nummer ingangsmodule
@@ -45,5 +46,7 @@ virtuele_ingang:
         select:
           options:
             - kort
+            - uit_lt_1
             - lang
+            - uit_gt_1
             - extra_lang

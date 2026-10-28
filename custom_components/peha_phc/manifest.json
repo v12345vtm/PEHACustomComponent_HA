@@ -1,9 +1,12 @@
 {
   "domain": "peha_phc",
   "name": "Peha PHC",
+  "codeowners": ["@v12345vtm"],
   "config_flow": true,
+  "documentation": "https://github.com/v12345vtm/PEHACustomComponent_HA",
+  "issue_tracker": "https://github.com/v12345vtm/PEHACustomComponent_HA/issues",
   "integration_type": "hub",
   "iot_class": "local_push",
   "requirements": ["pyserial-asyncio>=0.6"],
-  "version": "0.1.0"
+  "version": "0.1.1"
 }

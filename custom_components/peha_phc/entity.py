@@ -1,3 +1,4 @@
+# entity.py - Peha PHC versie 0.1.1
 """Basisklassen voor de entiteiten van Peha PHC."""
 from __future__ import annotations
 
@@ -6,9 +7,20 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 
-from .const import DOMAIN
+from .const import DOMAIN, SW_VERSION
 from .hub import PhcHub
 from .models import PhcModule
+
+
+def hub_device_info(entry_id: str) -> DeviceInfo:
+    """Het apparaat 'Peha PHC' met de poortschakelaars en de logsensoren."""
+    return DeviceInfo(
+        identifiers={(DOMAIN, entry_id)},
+        name="Peha PHC",
+        manufacturer="Peha",
+        model="USB-kabel (STM) + RS485-busdongle",
+        sw_version=SW_VERSION,
+    )
 
 
 class PhcHubEntity(Entity):
@@ -38,6 +50,17 @@ class PhcHubEntity(Entity):
         self.async_write_ha_state()
 
 
+class PhcHubAltijdBeschikbaar(PhcHubEntity):
+    """Hub-entiteit die beschikbaar blijft, ook als een poort gesloten is.
+
+    Anders kun je een gesloten poort niet meer met de schakelaar weer openen.
+    """
+
+    @property
+    def available(self) -> bool:
+        return True
+
+
 class PhcModuleEntity(PhcHubEntity):
     """Entiteit die bij een module hoort en op het apparaat van die module staat."""
 
@@ -49,4 +72,5 @@ class PhcModuleEntity(PhcHubEntity):
             name=module.name,
             manufacturer="Peha",
             model=module.model,
+            sw_version=SW_VERSION,
         )

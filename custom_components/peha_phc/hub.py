@@ -1,9 +1,12 @@
+# hub.py - Peha PHC versie 0.1.1
 """Verbindingen met de STM-stuureenheid (verzenden) en de RS485-busdongle (ontvangen)."""
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import time
+from collections import deque
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any
@@ -17,20 +20,23 @@ from .const import (
     CONF_TYPE,
     DOMAIN,
     EVENT_INGANG,
+    LOG_LENGTE,
     MODULE_ROLLUIK,
     MODULE_VIRTUEEL,
     PRIORITEIT,
     SERIAL_OPTIONS,
     TIMER_MARGE,
-    VIRTUAL_FUNCTIES,
 )
 from .models import PhcModule
 from .protocol import (
+    VIRTUAL_CODES,
     BusFrame,
     BusParser,
     command_frame,
     cover_frame,
     decode_frame,
+    describe_sent,
+    format_bus,
     relay_frame,
     status_frame,
     virtual_input_frame,
@@ -41,13 +47,14 @@ _LOGGER = logging.getLogger(__name__)
 RECONNECT_DELAY = 10.0       # seconden wachten voor een nieuwe poging
 INTERFRAME_DELAY = 0.05      # pauze tussen twee verzonden commando's
 POLL_DELAY = 0.4             # pauze tussen statusopvragingen bij het opstarten
-STATUS_REFRESH_DELAY = 0.5   # wachttijd voor een statusverversing na een bus-omschakelcommando
+STATUS_REFRESH_DELAY = 0.5   # wachttijd voor een statusopvraag na een ingangsevent of omschakelcommando
 DUPLICATE_WINDOW = 0.25      # identieke frames binnen dit venster worden genegeerd
 IGNORED_ADDRESSES = (0xFE, 0xE0)  # STM-header en broadcast
+LINKS = ("stm", "bus")
 
 
 class PhcHub:
-    """Beheert de twee seriële verbindingen en de toestand van alle modules."""
+    """Beheert de twee seriële verbindingen, de toestand van alle modules en de logs."""
 
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
         self.hass = hass
@@ -56,8 +63,11 @@ class PhcHub:
         self.bus_port = ""
         self.modules: dict[int, PhcModule] = {}
         self.virtual_buttons: list[dict] = []
+        self.enabled: dict[str, bool] = {"stm": True, "bus": True}
         self.stm_connected = False
         self.bus_connected = False
+        self.log_verstuurd: deque[dict] = deque(maxlen=LOG_LENGTE)
+        self.log_verwerkt: deque[dict] = deque(maxlen=LOG_LENGTE)
         self._stm_writer: Any = None
         self._send_lock = asyncio.Lock()
         self._parser = BusParser()
@@ -65,7 +75,8 @@ class PhcHub:
         self._unknown_seen: set[int] = set()
         self._status_pending: set[int] = set()
         self._cover_timers: dict[tuple[int, int], Callable[[], None]] = {}
-        self._tasks: list[asyncio.Task] = []
+        self._link_tasks: dict[str, asyncio.Task | None] = {"stm": None, "bus": None}
+        self._link_locks: dict[str, asyncio.Lock] = {"stm": asyncio.Lock(), "bus": asyncio.Lock()}
 
     @property
     def signal(self) -> str:
@@ -88,23 +99,51 @@ class PhcHub:
     def modules_of(self, kind: str) -> list[PhcModule]:
         return [m for m in self.modules.values() if m.kind == kind]
 
-    # ----------------------------------------------------------------- levenscyclus
+    # ----------------------------------------------------------- levenscyclus
 
     async def async_start(self) -> None:
-        self._tasks = [
-            self.hass.async_create_background_task(self._run_link("stm"), "peha_phc_stm"),
-            self.hass.async_create_background_task(self._run_link("bus"), "peha_phc_bus"),
-        ]
+        for which in LINKS:
+            async with self._link_locks[which]:
+                if self.enabled[which]:
+                    self._start_link(which)
 
     async def async_stop(self) -> None:
-        for task in self._tasks:
-            task.cancel()
-        if self._tasks:
-            await asyncio.gather(*self._tasks, return_exceptions=True)
-        self._tasks = []
+        for which in LINKS:
+            async with self._link_locks[which]:
+                await self._stop_link(which)
         for cancel in self._cover_timers.values():
             cancel()
         self._cover_timers.clear()
+
+    async def async_set_enabled(self, which: str, enabled: bool) -> None:
+        """Opent of sluit een poort. Gesloten betekent dat de poort echt wordt losgelaten.
+
+        Met een slot wordt elke schakeling afgemaakt voordat de volgende begint. Zo eindigt
+        snel achter elkaar schakelen altijd in de stand van de laatste schakeling.
+        """
+        async with self._link_locks[which]:
+            self.enabled[which] = enabled
+            if enabled:
+                self._start_link(which)
+            else:
+                await self._stop_link(which)
+        self._dispatch()
+
+    def _start_link(self, which: str) -> None:
+        task = self._link_tasks[which]
+        if task is None or task.done():
+            self._link_tasks[which] = self.hass.async_create_background_task(
+                self._run_link(which), f"peha_phc_{which}"
+            )
+
+    async def _stop_link(self, which: str) -> None:
+        task = self._link_tasks[which]
+        self._link_tasks[which] = None
+        if task is not None and not task.done():
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+        self._set_link(which, False)
 
     async def _run_link(self, which: str) -> None:
         # Hier geïmporteerd, zodat de losse tests zonder pyserial kunnen draaien.
@@ -132,13 +171,14 @@ class PhcHub:
                             try:
                                 self._handle_frame(frame)
                             except Exception:  # noqa: BLE001
-                                _LOGGER.exception("Bus-frame kon niet verwerkt worden: %s", frame.raw.hex(" "))
+                                _LOGGER.exception("Bus-frame kon niet verwerkt worden: %s",
+                                                  frame.raw.hex(" "))
                     else:
                         _LOGGER.debug("STM antwoord: %s", data.hex(" "))
             except Exception as err:  # noqa: BLE001
                 _LOGGER.warning("Verbinding %s verbroken: %s", which, err)
             finally:
-                if which == "stm":
+                if which == "stm" and self._stm_writer is writer:
                     self._stm_writer = None
                 writer.close()
                 self._set_link(which, False)
@@ -159,6 +199,8 @@ class PhcHub:
     async def _async_send(self, frame: bytes) -> None:
         writer = self._stm_writer
         if writer is None or not self.stm_connected:
+            if not self.enabled["stm"]:
+                raise HomeAssistantError("De Peha USB-kabel (STM) is uitgeschakeld in de integratie")
             raise HomeAssistantError("De Peha USB-kabel (STM) is niet verbonden")
         async with self._send_lock:
             _LOGGER.debug("STM << %s", frame.hex(" "))
@@ -167,6 +209,8 @@ class PhcHub:
                 await writer.drain()
             except OSError as err:
                 raise HomeAssistantError(f"Schrijven naar de STM mislukt: {err}") from err
+            self._log(self.log_verstuurd, frame.hex(" ").upper(), describe_sent(frame, self._kind_of))
+            self._dispatch()
             await asyncio.sleep(INTERFRAME_DELAY)
 
     async def async_request_status(self, address: int) -> None:
@@ -189,10 +233,11 @@ class PhcHub:
         self._dispatch()
 
     async def async_virtual_click(self, address: int, channel: int, functie: str) -> None:
-        press, release, hold = VIRTUAL_FUNCTIES[functie]
-        await self._async_send(virtual_input_frame(address, (channel << 4) | press))
-        await asyncio.sleep(hold)
-        await self._async_send(virtual_input_frame(address, (channel << 4) | release))
+        """Virtuele ingang: één commando, zoals de Node-RED IMD GENERATOR. Geen loslaatcommando."""
+        code = VIRTUAL_CODES.get(functie)
+        if code is None:
+            raise HomeAssistantError(f"Onbekende virtuele functie: {functie}")
+        await self._async_send(virtual_input_frame(address, (channel << 4) | code))
 
     async def _async_poll_all(self) -> None:
         for module in list(self.modules.values()):
@@ -202,6 +247,14 @@ class PhcHub:
                 return
             await asyncio.sleep(POLL_DELAY)
 
+    def _kind_of(self, address: int) -> str | None:
+        module = self.modules.get(address)
+        return module.kind if module else None
+
+    @staticmethod
+    def _log(log: deque, hexstr: str, betekenis: str) -> None:
+        log.append({"tijd": datetime.now().strftime("%H:%M:%S"), "hex": hexstr, "betekenis": betekenis})
+
     # --------------------------------------------------------------- ontvangen
 
     def _handle_frame(self, frame: BusFrame) -> None:
@@ -209,19 +262,20 @@ class PhcHub:
             return
         msg = decode_frame(frame)
         module = self.modules.get(frame.address)
+        regel = format_bus(frame, msg, module.kind if module else None)
+        self._log(self.log_verwerkt, frame.raw.hex(" ").upper(), regel)
         if module is None:
             if frame.address not in self._unknown_seen:
                 self._unknown_seen.add(frame.address)
-                _LOGGER.info(
-                    "Bus-adres 0x%02X is niet ingesteld in de integratie: %s",
-                    frame.address, frame.raw.hex(" "),
-                )
+                _LOGGER.info("Bus-adres 0x%02X is niet ingesteld in de integratie: %s",
+                             frame.address, frame.raw.hex(" "))
+            self._dispatch()
             return
 
-        module.last_text = msg.text
+        module.last_text = regel
         module.last_hex = frame.raw.hex(" ").upper()
         module.last_time = datetime.now().isoformat(timespec="seconds")
-        _LOGGER.debug("Bus: %s", msg.text)
+        _LOGGER.debug("Bus: %s", regel)
 
         before = [cover.generation for cover in module.covers]
         for effect in module.apply(msg):
@@ -237,9 +291,10 @@ class PhcHub:
                         "actie": action,
                     },
                 )
+                # Een ingangsevent kan een korte impuls zijn: vraag daarom de volledige status op.
+                self._schedule_status(module.address)
             elif effect[0] == "refresh":
                 self._schedule_status(module.address)
-
         if module.kind == MODULE_ROLLUIK:
             self._refresh_cover_timers(module, before)
         self._dispatch()
@@ -262,9 +317,11 @@ class PhcHub:
             try:
                 await self.async_request_status(address)
             except HomeAssistantError:
-                _LOGGER.debug("Statusverversing mislukt voor adres 0x%02X", address)
+                _LOGGER.debug("Statusopvraag mislukt voor adres 0x%02X", address)
 
         async_call_later(self.hass, STATUS_REFRESH_DELAY, _refresh)
+
+    # ------------------------------------------------------- rolluiktimers
 
     def _refresh_cover_timers(self, module: PhcModule, before: list[int]) -> None:
         """Start de looptijd-timer opnieuw bij elke nieuwe beweging en ruimt hem op als de beweging voorbij is."""
