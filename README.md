@@ -1,4 +1,4 @@
-# Peha PHC voor Home Assistant
+# Peha PHC voor Home Assistant   
 
 [English version](README.en.md)
 
@@ -26,6 +26,7 @@ Deze integratie stuurt echte relais en rolluiken aan. Het is geen veiligheidssys
 - Een RS485-busdongle met USB, aangesloten op de Peha-bus.
 - Beide USB-apparaten op dezelfde Home Assistant-machine. Home Assistant moet toegang hebben tot de poorten. Op Linux is dat meestal de groep `dialout`.
 - Node-RED mag de poorten niet tegelijk gebruiken.
+- https://community.home-assistant.io/t/peha-honeywell-phc-domotics-system/1030693
 
 ## Aansluiten
 
