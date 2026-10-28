@@ -1,7 +1,7 @@
-# const.py - Peha PHC versie 0.1.1
+# const.py - Peha PHC versie 0.1.2
 """Constanten voor de Peha PHC-integratie."""
 
-SW_VERSION = "0.1.1"
+SW_VERSION = "0.1.2"
 DOMAIN = "peha_phc"
 
 # Sleutels in de config entry
@@ -48,6 +48,9 @@ DEFAULT_LOOPTIJDEN = (20.0, 25.0, 30.0, 16.0)
 MIN_LOOPTIJD = 3
 MAX_LOOPTIJD = 180
 TIMER_MARGE = 5.0  # extra seconden voordat een beweging zonder eindmelding als klaar telt
+# Ingangen: de statusopvraag komt pas na het loslaten; HOLD_TIMEOUT is het vangnet zonder loslaat-event
+STATUS_NA_LOSLATEN = 1.5  # seconden na het loslaten van een ingangsknop
+HOLD_TIMEOUT = 10.0       # seconden zonder loslaat-event, daarna alsnog de status opvragen
 PRIORITEIT = 7
 
 # Virtuele functies: sleutel -> tekst in de keuzelijst. De bijbehorende code staat in protocol.VIRTUAL_CODES.

@@ -1,4 +1,4 @@
-# number.py - Peha PHC versie 0.1.1
+# number.py - Peha PHC versie 0.1.2
 """Looptijd per rolluikkanaal: 4 schuifregelaars van 3 tot 180 seconden."""
 from __future__ import annotations
 

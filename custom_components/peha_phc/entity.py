@@ -1,4 +1,4 @@
-# entity.py - Peha PHC versie 0.1.1
+# entity.py - Peha PHC versie 0.1.2
 """Basisklassen voor de entiteiten van Peha PHC."""
 from __future__ import annotations
 

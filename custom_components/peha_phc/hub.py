@@ -1,4 +1,4 @@
-# hub.py - Peha PHC versie 0.1.1
+# hub.py - Peha PHC versie 0.1.2
 """Verbindingen met de STM-stuureenheid (verzenden) en de RS485-busdongle (ontvangen)."""
 from __future__ import annotations
 
@@ -20,11 +20,13 @@ from .const import (
     CONF_TYPE,
     DOMAIN,
     EVENT_INGANG,
+    HOLD_TIMEOUT,
     LOG_LENGTE,
     MODULE_ROLLUIK,
     MODULE_VIRTUEEL,
     PRIORITEIT,
     SERIAL_OPTIONS,
+    STATUS_NA_LOSLATEN,
     TIMER_MARGE,
 )
 from .models import PhcModule
@@ -47,7 +49,7 @@ _LOGGER = logging.getLogger(__name__)
 RECONNECT_DELAY = 10.0       # seconden wachten voor een nieuwe poging
 INTERFRAME_DELAY = 0.05      # pauze tussen twee verzonden commando's
 POLL_DELAY = 0.4             # pauze tussen statusopvragingen bij het opstarten
-STATUS_REFRESH_DELAY = 0.5   # wachttijd voor een statusopvraag na een ingangsevent of omschakelcommando
+STATUS_REFRESH_DELAY = 0.5   # wachttijd voor een statusopvraag na een omschakelcommando
 DUPLICATE_WINDOW = 0.25      # identieke frames binnen dit venster worden genegeerd
 IGNORED_ADDRESSES = (0xFE, 0xE0)  # STM-header en broadcast
 LINKS = ("stm", "bus")
@@ -73,7 +75,8 @@ class PhcHub:
         self._parser = BusParser()
         self._recent: dict[bytes, float] = {}
         self._unknown_seen: set[int] = set()
-        self._status_pending: set[int] = set()
+        self._status_pending: dict[int, Callable[[], None]] = {}
+        self._hold_timers: dict[tuple[int, int], Callable[[], None]] = {}
         self._cover_timers: dict[tuple[int, int], Callable[[], None]] = {}
         self._link_tasks: dict[str, asyncio.Task | None] = {"stm": None, "bus": None}
         self._link_locks: dict[str, asyncio.Lock] = {"stm": asyncio.Lock(), "bus": asyncio.Lock()}
@@ -114,6 +117,12 @@ class PhcHub:
         for cancel in self._cover_timers.values():
             cancel()
         self._cover_timers.clear()
+        for cancel in self._status_pending.values():
+            cancel()
+        self._status_pending.clear()
+        for cancel in self._hold_timers.values():
+            cancel()
+        self._hold_timers.clear()
 
     async def async_set_enabled(self, which: str, enabled: bool) -> None:
         """Opent of sluit een poort. Gesloten betekent dat de poort echt wordt losgelaten.
@@ -291,8 +300,7 @@ class PhcHub:
                         "actie": action,
                     },
                 )
-                # Een ingangsevent kan een korte impuls zijn: vraag daarom de volledige status op.
-                self._schedule_status(module.address)
+                self._input_feedback(module, channel)
             elif effect[0] == "refresh":
                 self._schedule_status(module.address)
         if module.kind == MODULE_ROLLUIK:
@@ -307,19 +315,49 @@ class PhcHub:
             self._recent = {k: t for k, t in self._recent.items() if now - t < DUPLICATE_WINDOW}
         return last is not None and now - last < DUPLICATE_WINDOW
 
-    def _schedule_status(self, address: int) -> None:
-        if address in self._status_pending:
-            return
-        self._status_pending.add(address)
+    def _schedule_status(self, address: int, delay: float | None = None) -> None:
+        """Vraagt de status van een module op na 'delay' seconden. Een eerdere, nog wachtende aanvraag vervalt."""
+        wacht = STATUS_REFRESH_DELAY if delay is None else delay
+        vorige = self._status_pending.pop(address, None)
+        if vorige is not None:
+            vorige()
 
         async def _refresh(_now: Any) -> None:
-            self._status_pending.discard(address)
+            self._status_pending.pop(address, None)
             try:
                 await self.async_request_status(address)
             except HomeAssistantError:
                 _LOGGER.debug("Statusopvraag mislukt voor adres 0x%02X", address)
 
-        async_call_later(self.hass, STATUS_REFRESH_DELAY, _refresh)
+        self._status_pending[address] = async_call_later(self.hass, wacht, _refresh)
+
+    def _input_feedback(self, module: PhcModule, channel: int) -> None:
+        """Statusopvraag na een ingangsactie, pas nadat de knop is losgelaten.
+
+        Tijdens het indrukken vraagt de integratie niets: de module meldt dan nog 'hoog', en dat
+        tussentijdse antwoord mag de stand niet meer bepalen.
+        """
+        key = (module.address, channel)
+        if module.inputs[channel]:
+            if key not in self._hold_timers:
+                self._arm_hold_timer(module.address, key)
+        else:
+            self._cancel_hold_timer(key)
+            self._schedule_status(module.address, STATUS_NA_LOSLATEN)
+
+    def _arm_hold_timer(self, address: int, key: tuple[int, int]) -> None:
+        """Vangnet: zonder loslaat-event vraagt de integratie na HOLD_TIMEOUT alsnog de status op."""
+
+        async def _expired(_now: Any) -> None:
+            self._hold_timers.pop(key, None)
+            self._schedule_status(address)
+
+        self._hold_timers[key] = async_call_later(self.hass, HOLD_TIMEOUT, _expired)
+
+    def _cancel_hold_timer(self, key: tuple[int, int]) -> None:
+        cancel = self._hold_timers.pop(key, None)
+        if cancel is not None:
+            cancel()
 
     # ------------------------------------------------------- rolluiktimers
 

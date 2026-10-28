@@ -1,4 +1,4 @@
-# __init__.py - Peha PHC versie 0.1.1
+# __init__.py - Peha PHC versie 0.1.2
 """Peha PHC: koppeling met de Peha PHC-bus via de STM-stuureenheid en een busdongle."""
 from __future__ import annotations
 
@@ -19,11 +19,11 @@ from .const import (
     MODULE_INGANG,
     PHC_MAX,
     PHC_MIN,
-    VIRTUAL_FUNCTIES,
     module_address,
     module_key,
 )
 from .hub import PhcHub
+from .protocol import virtual_functie
 
 PLATFORMS = [
     Platform.SWITCH,
@@ -42,7 +42,7 @@ VIRTUAL_SCHEMA = vol.Schema(
     {
         vol.Required("adres"): vol.All(vol.Coerce(int), vol.Range(min=PHC_MIN, max=PHC_MAX)),
         vol.Required("kanaal"): vol.All(vol.Coerce(int), vol.Range(min=0, max=AANTAL_INGANGEN - 1)),
-        vol.Required("functie"): vol.In(list(VIRTUAL_FUNCTIES)),
+        vol.Required("functie"): cv.string,
     }
 )
 
@@ -68,8 +68,11 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     async def _virtual_service(call: ServiceCall) -> None:
         hub = _get_hub(hass)
+        functie = virtual_functie(call.data["functie"])
+        if functie is None:
+            raise HomeAssistantError(f"Onbekende virtuele functie: {call.data['functie']}")
         address = module_address(MODULE_INGANG, call.data["adres"])
-        await hub.async_virtual_click(address, call.data["kanaal"], call.data["functie"])
+        await hub.async_virtual_click(address, call.data["kanaal"], functie)
 
     hass.services.async_register(DOMAIN, SERVICE_RAW, _raw_service, schema=RAW_SCHEMA)
     hass.services.async_register(DOMAIN, SERVICE_VIRTUAL, _virtual_service, schema=VIRTUAL_SCHEMA)

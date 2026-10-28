@@ -1,4 +1,4 @@
-# sensor.py - Peha PHC versie 0.1.1
+# sensor.py - Peha PHC versie 0.1.2
 """Sensoren: module-status, laatste bus-data, rolluikstatus per kanaal en de twee logsensoren."""
 from __future__ import annotations
 

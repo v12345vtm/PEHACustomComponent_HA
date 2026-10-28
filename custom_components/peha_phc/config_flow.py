@@ -1,4 +1,4 @@
-# config_flow.py - Peha PHC versie 0.1.1
+# config_flow.py - Peha PHC versie 0.1.2
 """Configuratie- en optiesflow voor Peha PHC."""
 from __future__ import annotations
 

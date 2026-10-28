@@ -1,4 +1,4 @@
-# protocol.py - Peha PHC versie 0.1.1
+# protocol.py - Peha PHC versie 0.1.2
 """PHC-protocol: CRC, STM-framing, busparser, decoders en logregels.
 
 Puur Python zonder Home Assistant, zodat het los te testen is.
@@ -73,6 +73,24 @@ VIRTUAL_CODES = {
     "uit_gt_1": 0x05,    # uit > 1 seconden
     "extra_lang": 0x06,  # aan > 2 seconden
 }
+
+# Namen van de virtuele functies, zoals de Node-RED IMD GENERATOR ze kent (kleine letters)
+VIRTUAL_NAMEN = {
+    "kort": "aan > 0 seconden",
+    "uit_lt_1": "uit < 1 seconden",
+    "lang": "aan > 1 seconden",
+    "uit_gt_1": "uit > 1 seconden",
+    "extra_lang": "aan > 2 seconden",
+}
+
+
+def virtual_functie(waarde) -> str | None:
+    """Zet een functie om naar de sleutel. Accepteert de sleutel, de naam of het nummer."""
+    tekst = str(waarde).strip().lower()
+    for sleutel, code in VIRTUAL_CODES.items():
+        if tekst in (sleutel, VIRTUAL_NAMEN[sleutel], str(code)):
+            return sleutel
+    return None
 
 MAX_FRAME = 132  # 1 adres + 1 lengte + max. 127 payload + 2 CRC + marge
 
