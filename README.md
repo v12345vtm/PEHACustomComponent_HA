@@ -1,81 +1,350 @@
-# Peha PHC Integratie - Gebruikershandleiding
+# Peha PHC voor Home Assistant
 
-Welkom bij de Peha PHC-integratie voor Home Assistant. Deze integratie stelt je in staat om je fysieke Peha-installatie (relais, rolluiken en ingangen) rechtstreeks via Home Assistant aan te sturen en uit te lezen.
+[English version](README.en.md)
 
-De integratie maakt gebruik van een dubbele USB-architectuur:
-*   **Tx (Zenden):** Via de STM-stuureenheid (meestal `/dev/ttyACM0`). De integratie regelt de benodigde `C0 ... C1` omhulling en CRC-berekening.
-*   **Rx (Ontvangen):** Via een RS485-dongle op de databus (meestal `/dev/ttyUSB0`). De integratie vangt alle bus-berichten op en vertaalt deze naar real-time Home Assistant statussen.
+Home Assistant-integratie voor de Peha PHC-bus. Je bedient relais, rolluiken en virtuele knoppen vanuit Home Assistant, en je ziet de ingangen en het verkeer op de bus.
 
----
+> **Testversie 0.1.1.** Deze integratie is nieuw en zoekt testers met een echte Peha PHC-installatie. Lees eerst de waarschuwing hieronder.
 
-## 1. Installatie & Configuratie
+## Waarschuwing
 
-1.  Kopieer de map `phc_bus` naar de map `custom_components` in je Home Assistant configuratie.
-2.  Herstart Home Assistant.
-3.  Ga naar **Instellingen** -> **Apparaten & Diensten** -> **Integratie toevoegen**.
-4.  Zoek naar **Peha PHC**.
-5.  Vul de paden naar je USB-poorten in:
-    *   **STM USB Poort (Tx):** `/dev/ttyACM0` (of `COM3` op Windows).
-    *   **RS485 Dongle Poort (Rx):** `/dev/ttyUSB0` (of `COM4` op Windows).
-6.  Klik op **Verzenden**.
+Deze integratie stuurt echte relais en rolluiken aan. Het is geen veiligheidssysteem. Zorg dat je installatie altijd handmatig bedienbaar blijft, en gebruik de integratie op eigen risico.
 
----
+## Wat kan de integratie?
 
-## 2. Modules Toevoegen
+- **Relaismodule (AMD):** 8 schakelaars, per kanaal aan of uit.
+- **Rolluikmodule (JRM):** 4 covers met open, dicht en stop, en een looptijd per kanaal.
+- **Ingangsmodule (IMD):** 16 binaire sensoren, en een event bij elke ingangsactie.
+- **Virtuele knoppen:** een klik op een ingang, met de functies uit de Node-RED-flow.
+- **Poortschakelaars:** de USB-kabel en de busdongle zijn los van elkaar te sluiten, bijvoorbeeld om Node-RED weer te gebruiken.
+- **Logsensoren:** alle verstuurde pakketten en alle verwerkte bus-pakketten.
 
-Zodra de integratie is toegevoegd, kun je je modules configureren via de knop **Configureren** op de integratiekaart.
+## Vereisten
 
-Bij het toevoegen van een module wordt er gevraagd naar:
-*   **Type:** Relais (AMD), Rolluik (JRM) of Ingang (IMD).
-*   **PHC Nummer (GUI):** Het nummer dat je fysiek op de DIP-schakelaar hebt ingesteld (0 t/m 31).
-*   **Naam:** Een herkenbare naam (bijvoorbeeld "Lamp Woonkamer" of "Rolluik Slaapkamer").
+- Home Assistant, een recente versie. De minimale versie is nog niet vastgesteld.
+- Een Peha PHC-installatie met een STM-stuureenheid, aangesloten met een USB-kabel.
+- Een RS485-busdongle met USB, aangesloten op de Peha-bus.
+- Beide USB-apparaten op dezelfde Home Assistant-machine. Home Assistant moet toegang hebben tot de poorten. Op Linux is dat meestal de groep `dialout`.
+- Node-RED mag de poorten niet tegelijk gebruiken.
 
-*De integratie rekent het GUI-nummer automatisch om naar het juiste Hex-adres op de bus (bijv. Relais 0 = `0x40`, Ingang 0 = `0x00`).*
+## Aansluiten
 
-### 2.1. Relais Toevoegen (AMD)
-*   Elke relais-module heeft standaard **8 kanalen**.
-*   Na het toevoegen verschijnen er 8 schakelaars in Home Assistant (Kanaal 0 t/m 7).
-*   Er wordt ook een **Status** sensor en een **Status opvragen** knop aangemaakt.
+![Aansluitingen Peha PHC](https://i.imgur.com/602oKcF.png)
 
-### 2.2. Rolluik Toevoegen (JRM)
-*   Elke rolluik-module heeft standaard **4 kanalen**.
-*   Je moet per kanaal de **looptijd in seconden** opgeven (bijv. 20, 25, 30, 16). Dit is nodig om de positie te berekenen.
-*   Home Assistant toont de rolluiken als `cover` entiteiten met de knoppen **Openen**, **Stoppen** en **Sluiten**.
+- De USB-kabel gaat naar de STM-stuureenheid. Standaard is dat `/dev/ttyACM0`. Hierheen gaan de commando's, met C0/C1-framing.
+- De RS485-busdongle gaat naar de Peha-bus. Standaard is dat `/dev/ttyUSB0`. Hiervandaan komen de ruwe bus-data.
+- Beide poorten werken met 19200 baud, 8 databits, geen pariteit en 2 stopbits.
+- Gebruik bij voorkeur de vaste namen onder `/dev/serial/by-id/`. De namen `ttyACM0` en `ttyUSB0` kunnen na een herstart van volgorde wisselen.
 
-### 2.3. Ingang Toevoegen (IMD)
-*   Elke ingangs-module heeft standaard **16 kanalen** (knoppen).
-*   De integratie maakt 16 `binary_sensor` entiteiten aan.
-*   Bij het opstarten vraagt de integratie automatisch de status op, zodat Home Assistant weet welke knoppen ingedrukt zijn.
+De bedrading van de bus en de stuureenheid staat op de foto hierboven.
 
----
+## Installeren
 
-## 3. De Interface (Apparaat-info)
+1. Kopieer de map `custom_components/peha_phc` naar de map `custom_components` van Home Assistant. Je kunt deze repository ook in HACS toevoegen als aangepaste repository van het type integratie.
+2. Herstart Home Assistant.
+3. Ga naar **Instellingen → Apparaten en diensten → Integratie toevoegen** en kies **Peha PHC**.
+4. Vul de poorten in. De standaard is `/dev/ttyACM0` voor de USB-kabel en `/dev/ttyUSB0` voor de busdongle. Lukt de verbinding niet, dan krijg je een melding. Controleer dan het pad en of Node-RED de poort gebruikt.
 
-Als je op een module klikt in Home Assistant, zie je het volgende overzicht (zie afbeelding):
+Draai je al versie 0.1.0 of nieuwer? Dan vervang je alleen de map en herstart je Home Assistant. Bestaande entiteiten houden hun id.
 
-### 3.1. Bediening (Relais)
-*   **Kanaal 0 t/m 7:** Dit zijn de schakelaars. Een klik zet het relais aan of uit. De status wordt direct bijgewerkt op basis van de feedback van de bus.
-*   **Status opvragen:** Dit is een knop. Als je hierop klikt, stuurt de integratie een verzoek naar de bus om de huidige status van alle 8 relais op te halen.
+## Modules toevoegen
 
-### 3.2. Sensoren
-*   **Status:** Deze sensor toont de ruwe bitmasker-status van de module (bijvoorbeeld `00000000` voor allemaal uit, of `00000100` voor kanaal 2 aan).
+Ga naar **Apparaten en diensten → Peha PHC → Configureren**. Per module vul je alleen het PHC-nummer en een naam in.
 
-### 3.3. Activiteit (Logboek)
-Home Assistant houdt automatisch een logboek bij van alle acties. Je ziet hier bijvoorbeeld:
-*   `Kanaal 6: Aan` (om 10:09:21)
-*   `Status: ??????10` (om 10:09:21)
-*   `Kanaal 6: Uit` (om 10:09:19)
+| Module | Aantal | Bus-adres |
+|---|---|---|
+| Ingang (IMD) | 16 ingangen | `0x00` + PHC-nummer |
+| Relais (AMD) | 8 kanalen | `0x40` + PHC-nummer |
+| Rolluik (JRM) | 4 kanalen | `0x40` + PHC-nummer |
 
----
+Het PHC-nummer is het nummer dat je op de module instelt, van 0 tot en met 31. Relais en rolluik delen het adresbereik `0x40` tot en met `0x5F`, dus één nummer kan maar één uitgangsmodule zijn. De integratie controleert dat bij het toevoegen.
 
-## 4. Geavanceerd gebruik
+Een virtuele knop voeg je op dezelfde manier toe. Je kiest het PHC-nummer van de ingangsmodule, het kanaal (0 tot en met 15), de functie en een naam.
 
-### 4.1. Virtuele Knoppen (Ingangen Simuleren)
-Je kunt een fysieke knop in je huis simuleren via een automatisering of script. 
-Dit doe je door de service `phc_bus.send_input_event` aan te roepen:
+## Entiteiten
+
+De entiteitsnamen staan in het Nederlands, zoals ze in Home Assistant verschijnen.
+
+**Hub (Peha PHC)**
+
+- *Poort USB-kabel (STM)* en *Poort busdongle (RS485)*: schakelaars, standaard aan. Uit sluit de poort echt, en de stand blijft bewaard na een herstart.
+- *Verstuurde pakketten (USB-kabel)*: sensor met de C0 ... C1-pakketten die naar de STM gaan.
+- *Verwerkte bus-pakketten*: sensor met de regels die de parser verwerkt heeft.
+
+De twee logsensoren hebben het attribuut `pakketten` (een lijst, als JSON) en het attribuut `tekst` (dezelfde regels als gewone tekst).
+
+**Relaismodule**
+
+- *Kanaal 0* tot en met *Kanaal 7*: schakelaars.
+- *Status*: sensor met acht tekens. De positie geeft het kanaal aan, bijvoorbeeld `00000000`.
+- *Status opvragen*: knop.
+- *Laatste bus-data*: diagnostische sensor.
+
+**Rolluikmodule**
+
+- *Kanaal 0* tot en met *Kanaal 3*: covers, met het attribuut `status`.
+- *Looptijd kanaal 0* tot en met *3*: schuifregelaars van 3 tot 180 seconden. De standaard is 20, 25, 30 en 16 seconden.
+- *Kanaal N status*: sensor met open, closed, halted, opening, closing of unknown.
+- *Kanaal N omhoog* en *Kanaal N omlaag*: knoppen die altijd een commando sturen.
+- *Status*, *Status opvragen* en *Laatste bus-data*.
+
+**Ingangsmodule**
+
+- *Ingang 0* tot en met *Ingang 15*: binaire sensoren.
+- *Status*: sensor in de vorm `ingangen,LEDs`, met twee keer 16 tekens.
+- *Status opvragen* en *Laatste bus-data*.
+
+**Virtuele knop**
+
+- Eén knop per virtuele ingang. Een klik stuurt één commando.
+
+## Virtuele functies
+
+| Functie | Betekenis | Code |
+|---|---|---|
+| `kort` | Aan > 0 seconden | `0x02` |
+| `uit_lt_1` | Uit < 1 seconden | `0x03` |
+| `lang` | Aan > 1 seconden | `0x04` |
+| `uit_gt_1` | Uit > 1 seconden | `0x05` |
+| `extra_lang` | Aan > 2 seconden | `0x06` |
+
+## Rolluiken
+
+- Een commando gaat altijd naar de module, ook tijdens een beweging.
+- In rust staat de cover op `unknown`, zodat de knoppen aan blijven. Tijdens een beweging staat hij op `opening` of `closing`.
+- De echte status staat in het attribuut `status` en in de sensor *Kanaal N status*.
+- Een stop tijdens een beweging geeft `halted`. Home Assistant kent die status niet voor covers.
+- Komt er geen eindmelding, dan sluit een vangnet de beweging af na de looptijd plus 5 seconden.
+- Na een herstart herstelt de integratie de laatst bekende status uit de sensor.
+
+## Events en services
+
+Bij elke ingangsactie vuurt de integratie het event `peha_phc_ingang` af. Het bevat de velden `module`, `adres`, `naam`, `kanaal` en `actie`. De actie is `kort_ingedrukt`, `kort_losgelaten`, `lang_ingedrukt`, `lang_losgelaten`, `extra_lang_ingedrukt` of `losgelaten`.
+
+Er zijn twee services:
+
+- `peha_phc.stuur_commando` stuurt een ruw commando, met de velden `adres` en `data` in hex. Handig om te testen.
+- `peha_phc.virtuele_ingang` stuurt een virtuele functie, met de velden `adres` (het PHC-nummer), `kanaal` en `functie`.
+
+## Logs en fouten zoeken
+
+Voor meer detail zet je dit in `configuration.yaml`:
+
 ```yaml
-service: phc_bus.send_input_event
-data:
-  address: 1        # Het GUI nummer van de IMD module
-  channel: 15       # Het kanaal (0-15)
-  function: 2       # 2 = Kort, 4 = Lang, 6 = Extra Lang
+logger:
+  logs:
+    custom_components.peha_phc: debug
+```
+
+Veelvoorkomende meldingen:
+
+- **Poort niet beschikbaar:** controleer het pad, de rechten en of Node-RED de poort gebruikt.
+- **Module onbeschikbaar:** een van de poorten is uit of niet verbonden.
+- **Bus-adres niet ingesteld:** er komt verkeer binnen van een PHC-nummer dat je nog niet hebt toegevoegd.
+
+## Bekende beperkingen en aannames
+
+- Rolluiken: de timer-events lees ik als het einde van de beweging in de laatst gekozen richting. Dat moet nog op echte hardware bevestigd worden.
+- Een virtuele knop stuurt één commando, zonder loslaten en zonder wachttijd.
+- Niet alle PHC-versies en moduleversies zijn getest. Laat het weten als jouw installatie afwijkt.
+
+## Meewerken en testen
+
+We zoeken testers met een Peha PHC-installatie. Dit zou ik graag getest zien:
+
+- relais aan en uit, en de statussensor
+- rolluiken omhoog, omlaag en stop, en de sensor *Kanaal N status*
+- ingangen: een druk op een knop geeft een event, en de status klopt na de automatische statusopvraag
+- virtuele knoppen
+- een herstart van Home Assistant: blijven de poortschakelaars en de rolluikstatus kloppen?
+
+Meld problemen via [GitHub Issues](https://github.com/v12345vtm/PEHACustomComponent_HA/issues). Voeg de versie van de integratie en van Home Assistant toe, je modulelijst en de tekst van de twee logsensoren.
+
+## Ontwikkelen
+
+De protocollogica en de statusovergangen testen zonder Home Assistant:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+Wijzigingen per versie staan in [CHANGELOG.md](CHANGELOG.md). De integratie is gebaseerd op de Node-RED-flow voor de PHC-bus.
+
+
+
+
+
+# Peha PHC for Home Assistant
+
+[Nederlandse versie](README.md)
+
+Home Assistant integration for the Peha PHC bus. Control relays, roller shutters and virtual buttons from Home Assistant, and see the inputs and the bus traffic.
+
+> **Test version 0.1.1.** This integration is new and looking for testers with a real Peha PHC installation. Please read the warning below first.
+
+## Warning
+
+This integration controls real relays and roller shutters. It is not a safety system. Make sure your installation can always be operated manually, and use the integration at your own risk.
+
+## What can the integration do?
+
+- **Relay module (AMD):** 8 switches, each channel on or off.
+- **Roller shutter module (JRM):** 4 covers with open, close and stop, and a run time per channel.
+- **Input module (IMD):** 16 binary sensors, and an event for every input action.
+- **Virtual buttons:** a click on an input, with the functions from the Node-RED flow.
+- **Port switches:** the USB cable and the bus dongle can be closed independently, for example to use Node-RED again.
+- **Log sensors:** all sent packets and all processed bus packets.
+
+## Requirements
+
+- Home Assistant, a recent version. The minimum version has not been determined yet.
+- A Peha PHC installation with an STM control unit, connected with a USB cable.
+- An RS485 bus dongle with USB, connected to the Peha bus.
+- Both USB devices on the same Home Assistant host. Home Assistant needs access to the ports. On Linux this is usually the `dialout` group.
+- Node-RED must not use the ports at the same time.
+
+## Wiring
+
+![Peha PHC wiring](https://i.imgur.com/602oKcF.png)
+
+- The USB cable goes to the STM control unit. By default this is `/dev/ttyACM0`. Commands are sent here, with C0/C1 framing.
+- The RS485 bus dongle goes to the Peha bus. By default this is `/dev/ttyUSB0`. Raw bus data comes from here.
+- Both ports use 19200 baud, 8 data bits, no parity and 2 stop bits.
+- Preferably use the stable names under `/dev/serial/by-id/`. The names `ttyACM0` and `ttyUSB0` can swap order after a restart.
+
+The wiring of the bus and the control unit is shown in the photo above.
+
+## Installation
+
+1. Copy the folder `custom_components/peha_phc` to the `custom_components` folder of Home Assistant. You can also add this repository in HACS as a custom repository of type integration.
+2. Restart Home Assistant.
+3. Go to **Settings → Devices & services → Add integration** and choose **Peha PHC**.
+4. Enter the ports. The defaults are `/dev/ttyACM0` for the USB cable and `/dev/ttyUSB0` for the bus dongle. If the connection fails, you get a message. Then check the path and whether Node-RED uses the port.
+
+Already running version 0.1.0 or newer? Then only replace the folder and restart Home Assistant. Existing entities keep their id.
+
+## Adding modules
+
+Go to **Devices & services → Peha PHC → Configure**. For each module you only enter the PHC number and a name.
+
+| Module | Count | Bus address |
+|---|---|---|
+| Input (IMD) | 16 inputs | `0x00` + PHC number |
+| Relay (AMD) | 8 channels | `0x40` + PHC number |
+| Roller shutter (JRM) | 4 channels | `0x40` + PHC number |
+
+The PHC number is the number you set on the module, from 0 to 31. Relays and roller shutters share the address range `0x40` to `0x5F`, so one number can only be one output module. The integration checks this when you add a module.
+
+You add a virtual button in the same way. Choose the PHC number of the input module, the channel (0 to 15), the function and a name.
+
+## Entities
+
+Entity names are in Dutch, as they appear in Home Assistant.
+
+**Hub (Peha PHC)**
+
+- *Poort USB-kabel (STM)* and *Poort busdongle (RS485)*: switches, on by default. Off closes the port for real, and the state is kept after a restart.
+- *Verstuurde pakketten (USB-kabel)*: sensor with the C0 ... C1 packets sent to the STM.
+- *Verwerkte bus-pakketten*: sensor with the lines the parser has processed.
+
+The two log sensors have an attribute `pakketten` (a list, as JSON) and an attribute `tekst` (the same lines as plain text).
+
+**Relay module**
+
+- *Kanaal 0* through *Kanaal 7*: switches.
+- *Status*: sensor with eight characters. The position shows the channel, for example `00000000`.
+- *Status opvragen* (request status): button.
+- *Laatste bus-data* (last bus data): diagnostic sensor.
+
+**Roller shutter module**
+
+- *Kanaal 0* through *Kanaal 3*: covers, with the attribute `status`.
+- *Looptijd kanaal 0* through *3* (run time): sliders from 3 to 180 seconds. Default 20, 25, 30 and 16 seconds.
+- *Kanaal N status*: sensor showing open, closed, halted, opening, closing or unknown.
+- *Kanaal N omhoog* (up) and *Kanaal N omlaag* (down): buttons that always send a command.
+- *Status*, *Status opvragen* and *Laatste bus-data*.
+
+**Input module**
+
+- *Ingang 0* through *Ingang 15* (input): binary sensors.
+- *Status*: sensor in the form `inputs,LEDs`, two times 16 characters.
+- *Status opvragen* and *Laatste bus-data*.
+
+**Virtual button**
+
+- One button per virtual input. One click sends one command.
+
+## Virtual functions
+
+| Function | Meaning | Code |
+|---|---|---|
+| `kort` | On > 0 seconds | `0x02` |
+| `uit_lt_1` | Off < 1 second | `0x03` |
+| `lang` | On > 1 second | `0x04` |
+| `uit_gt_1` | Off > 1 second | `0x05` |
+| `extra_lang` | On > 2 seconds | `0x06` |
+
+## Roller shutters
+
+- A command always goes to the module, also during a movement.
+- At rest the cover is `unknown`, so the buttons stay enabled. During a movement it is `opening` or `closing`.
+- The actual status is in the attribute `status` and in the sensor *Kanaal N status*.
+- A stop during a movement gives `halted`. Home Assistant has no such state for covers.
+- If no end message arrives, a fallback closes the movement after the run time plus 5 seconds.
+- After a restart, the integration restores the last known status from the sensor.
+
+## Events and services
+
+When an input action happens, the integration fires the event `peha_phc_ingang`. It contains the fields `module`, `adres`, `naam`, `kanaal` and `actie`. The action is `kort_ingedrukt`, `kort_losgelaten`, `lang_ingedrukt`, `lang_losgelaten`, `extra_lang_ingedrukt` or `losgelaten`.
+
+There are two services:
+
+- `peha_phc.stuur_commando` sends a raw command, with the fields `adres` and `data` in hex. Useful for testing.
+- `peha_phc.virtuele_ingang` sends a virtual function, with the fields `adres` (the PHC number), `kanaal` and `functie`.
+
+## Logs and troubleshooting
+
+For more detail, add this to `configuration.yaml`:
+
+```yaml
+logger:
+  logs:
+    custom_components.peha_phc: debug
+```
+
+Common messages:
+
+- **Port not available:** check the path, the permissions, and whether Node-RED uses the port.
+- **Module unavailable:** one of the ports is off or not connected.
+- **Bus address not configured:** traffic arrives from a PHC number you have not added yet.
+
+## Known limitations and assumptions
+
+- Roller shutters: I read the timer events as the end of the movement in the last chosen direction. This still needs to be confirmed on real hardware.
+- A virtual button sends one command, without a release and without a wait time.
+- Not all PHC versions and module versions have been tested. Tell us if your installation differs.
+
+## Testing and feedback
+
+We are looking for testers with a Peha PHC installation. These are the things I would like to see tested:
+
+- relays on and off, and the status sensor
+- roller shutters up, down and stop, and the sensor *Kanaal N status*
+- inputs: a button press gives an event, and the status is correct after the automatic status request
+- virtual buttons
+- a restart of Home Assistant: do the port switches and the roller shutter status stay correct?
+
+Report problems via [GitHub Issues](https://github.com/v12345vtm/PEHACustomComponent_HA/issues). Include the version of the integration and of Home Assistant, your module list, and the text of the two log sensors.
+
+## Development
+
+Run the protocol and state tests without Home Assistant:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+Changes per version are in [CHANGELOG.md](CHANGELOG.md). The integration is based on the Node-RED flow for the PHC bus.
+
+
+
