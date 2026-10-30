@@ -1,9 +1,10 @@
-# knop_lamp_dimmen.yaml - Peha PHC blauwdruk, versie 0.1.0
+# knop_lamp_dimmen.yaml - Peha PHC blauwdruk, versie 0.1.1
 blueprint:
   name: Peha knop - kort schakelen, lang dimmen
   description: >-
     Kort indrukken van een Peha-ingangsknop schakelt de lamp om. Lang indrukken laat de
     helderheid veranderen zolang de knop ingedrukt blijft. Bij het loslaten stopt het dimmen.
+    Werkt met elke light-entiteit in Home Assistant die helderheid ondersteunt, van welk merk ook.
     Gebruikt de sensor 'Event NN' van de ingangsknop. Zet die sensor aan in de entiteitsinstellingen.
   domain: automation
   input:
@@ -15,8 +16,8 @@ blueprint:
           domain: sensor
           integration: peha_phc
     lamp:
-      name: Lamp
-      description: De dimbare lamp die je wilt bedienen.
+      name: Lamp of dimmer
+      description: Elke light-entiteit met helderheid, van welk merk ook. Een lamp die alleen aan of uit kan, wordt niet gedimd.
       selector:
         entity:
           domain: light
@@ -92,7 +93,7 @@ actions:
           - repeat:
               while:
                 - condition: template
-                  value_template: "{% set b = state_attr(lamp_entity, 'brightness') | int(0) %}{{ states(knop_entity) not in ['3', '5', '7'] and (now().timestamp() - (start | float(0))) < (veiligheid_s | float(60)) and not (richting == 'omlaag' and b <= 0) and not (richting == 'omhoog' and b >= 255) }}"
+                  value_template: "{% set b = state_attr(lamp_entity, 'brightness') | int(0) %}{% set modes = state_attr(lamp_entity, 'supported_color_modes') or [] %}{{ modes != ['onoff'] and not is_state(lamp_entity, 'unavailable') and states(knop_entity) not in ['3', '5', '7'] and (now().timestamp() - (start | float(0))) < (veiligheid_s | float(60)) and not (richting == 'omlaag' and b <= 0) and not (richting == 'omhoog' and b >= 255) }}"
               sequence:
                 - variables:
                     nieuw: "{% set b = state_attr(lamp_entity, 'brightness') | int(0) %}{% set stap = 255 * 0.3 / (looptijd_s | float(5)) %}{% set doel = b + stap if richting == 'omhoog' else b - stap %}{{ [[doel, 0] | max, 255] | min | round(0) | int }}"
