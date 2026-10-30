@@ -4,7 +4,7 @@
 
 Home Assistant-integratie voor de Peha PHC-bus. Je bedient relais, rolluiken en virtuele knoppen vanuit Home Assistant, en je ziet de ingangen en het verkeer op de bus.
 
-> **Testversie 0.1.2.** Deze integratie is nieuw en zoekt testers met een echte Peha PHC-installatie. Lees eerst de waarschuwing hieronder.
+> **Testversie 0.1.3.** Deze integratie is nieuw en zoekt testers met een echte Peha PHC-installatie. Lees eerst de waarschuwing hieronder.
 
 ## Waarschuwing
 
@@ -93,6 +93,8 @@ De twee logsensoren hebben het attribuut `pakketten` (een lijst, als JSON) en he
 - *Ingang 0* tot en met *Ingang 15*: binaire sensoren.
 - *Status*: sensor in de vorm `ingangen,LEDs`, met twee keer 16 tekens.
 - *Status opvragen* en *Laatste bus-data*.
+- *Laatste knop-event*: het vereenvoudigde event van de laatste knopactie, bijvoorbeeld `01.12.2`.
+- *Event 00* tot en met *Event 15*: diagnosesensoren met het laatste numerieke event per knop. Standaard uitgeschakeld.
 
 **Virtuele knop**
 
@@ -123,9 +125,31 @@ Een ingangsknop geeft meerdere events achter elkaar. Bij een korte druk, losgela
 
 De integratie vraagt de status van de ingangsmodule pas op nadat de knop is losgelaten, na 1,5 seconde. Tijdens het indrukken vraagt de integratie niets, omdat de module dan nog "hoog" meldt, en dat antwoord kan na het loslaten verkeerd blijven staan. Komt er geen loslaat-event, dan vraagt de integratie na 10 seconden toch de status op. Beide tijden staan in `const.py`.
 
+## Ingangsevents in het kort
+
+Een ingangsknop stuurt zijn events op de bus. Die komen niet altijd in dezelfde volgorde binnen, en soms komt er een event helemaal niet door. De integratie houdt daarom het laatste event bij dat echt is ontvangen, en vraagt na het loslaten de status van de module opnieuw op.
+
+Per ingangsmodule zijn er twee soorten extra entiteiten:
+
+- *Laatste knop-event*: het vereenvoudigde event van de laatste knopactie, bijvoorbeeld `01.12.2`. Dat betekent module 01, knop 12, event 2. De attributen `knop`, `code`, `naam`, `actie` en `tijd` geven de details.
+- *Event 00* tot en met *Event 15*: het laatste numerieke event per knop. Deze diagnosesensoren staan standaard uit. Zet ze aan via de entiteitsinstellingen als je ze wilt gebruiken.
+
+| Code | Naam | Betekenis |
+|---|---|---|
+| 2 | `inflank` | Knop ingedrukt |
+| 3 | `kort_uitflank` | Losgelaten binnen 1 seconde |
+| 4 | `lang` | Langer dan 1 seconde ingedrukt |
+| 5 | `lang_uitflank` | Losgelaten na langer dan 1 seconde |
+| 6 | `lang_zeerlang` | Langer dan 2 seconden ingedrukt |
+| 7 | `losgelaten` | Losgelaten |
+
+Het event `peha_phc_ingang` bevat nu ook het veld `event`, bijvoorbeeld `01.12.2`. Daarop kun je in een automatisering filteren.
+
+Let op: een sensor-trigger reageert op een verandering van de waarde. Komen er twee gelijke events achter elkaar zonder tussenstand, dan kan de sensor-trigger één keer minder afgaan. De event-trigger op `peha_phc_ingang` reageert op elk event.
+
 ## Events en services
 
-Bij elke ingangsactie vuurt de integratie het event `peha_phc_ingang` af. Het bevat de velden `module`, `adres`, `naam`, `kanaal` en `actie`. De actie is `kort_ingedrukt`, `kort_losgelaten`, `lang_ingedrukt`, `lang_losgelaten`, `extra_lang_ingedrukt` of `losgelaten`.
+Bij elke ingangsactie vuurt de integratie het event `peha_phc_ingang` af. Het bevat de velden `module`, `adres`, `naam`, `kanaal`, `actie` en `event`. De actie is `kort_ingedrukt`, `kort_losgelaten`, `lang_ingedrukt`, `lang_losgelaten`, `extra_lang_ingedrukt` of `losgelaten`.
 
 Er zijn twee services:
 
@@ -153,6 +177,7 @@ Veelvoorkomende meldingen:
 - Rolluiken: de timer-events lees ik als het einde van de beweging in de laatst gekozen richting. Dat moet nog op echte hardware bevestigd worden.
 - Een virtuele knop stuurt één commando, zonder loslaten en zonder wachttijd.
 - Niet alle PHC-versies en moduleversies zijn getest. Laat het weten als jouw installatie afwijkt.
+- Zonder loslaat-event vraagt de integratie na 10 seconden de status op. Wil je dat sneller, zet dan `HOLD_TIMEOUT` in `const.py` op 2.5. Dat is minder veilig, want dan komt er ook tijdens het vasthouden een statusopvraag.
 
 ## Meewerken en testen
 
