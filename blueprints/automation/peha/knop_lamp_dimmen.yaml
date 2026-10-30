@@ -1,0 +1,114 @@
+# knop_lamp_dimmen.yaml - Peha PHC blauwdruk, versie 0.1.0
+blueprint:
+  name: Peha knop - kort schakelen, lang dimmen
+  description: >-
+    Kort indrukken van een Peha-ingangsknop schakelt de lamp om. Lang indrukken laat de
+    helderheid veranderen zolang de knop ingedrukt blijft. Bij het loslaten stopt het dimmen.
+    Gebruikt de sensor 'Event NN' van de ingangsknop. Zet die sensor aan in de entiteitsinstellingen.
+  domain: automation
+  input:
+    knop:
+      name: Knop
+      description: De sensor 'Event NN' van de ingangsknop, bijvoorbeeld sensor.in1_event_12.
+      selector:
+        entity:
+          domain: sensor
+          integration: peha_phc
+    lamp:
+      name: Lamp
+      description: De dimbare lamp die je wilt bedienen.
+      selector:
+        entity:
+          domain: light
+    looptijd:
+      name: Looptijd van 0 naar 100 procent
+      description: Hoe lang het dimmen van 0 naar 100 procent duurt. Van 100 naar 0 duurt het even lang.
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 60
+          step: 0.5
+          unit_of_measurement: s
+          mode: box
+    richting:
+      name: Richting bij lang indrukken
+      description: Automatisch dimt omlaag als de lamp boven de 50 procent staat, anders omhoog.
+      default: automatisch
+      selector:
+        select:
+          options:
+            - automatisch
+            - omhoog
+            - omlaag
+          mode: dropdown
+    veiligheidstijd:
+      name: Maximale dimtijd zonder loslaat-event
+      description: Komt er geen loslaat-event, dan stopt het dimmen na deze tijd.
+      default: 60
+      selector:
+        number:
+          min: 5
+          max: 300
+          step: 5
+          unit_of_measurement: s
+          mode: box
+
+variables:
+  knop_entity: !input knop
+  lamp_entity: !input lamp
+  looptijd_s: !input looptijd
+  richting_keuze: !input richting
+  veiligheid_s: !input veiligheidstijd
+
+mode: restart
+
+triggers:
+  - trigger: state
+    entity_id: !input knop
+    to: "3"
+    id: kort
+  - trigger: state
+    entity_id: !input knop
+    to: "4"
+    id: lang
+
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: kort
+        sequence:
+          - action: light.toggle
+            target:
+              entity_id: !input lamp
+      - conditions:
+          - condition: trigger
+            id: lang
+        sequence:
+          - variables:
+              start: "{{ now().timestamp() }}"
+              richting: "{% set b = state_attr(lamp_entity, 'brightness') | int(0) %}{% if richting_keuze == 'omhoog' %}omhoog{% elif richting_keuze == 'omlaag' %}omlaag{% elif b > 127 %}omlaag{% else %}omhoog{% endif %}"
+          - repeat:
+              while:
+                - condition: template
+                  value_template: "{% set b = state_attr(lamp_entity, 'brightness') | int(0) %}{{ states(knop_entity) not in ['3', '5', '7'] and (now().timestamp() - (start | float(0))) < (veiligheid_s | float(60)) and not (richting == 'omlaag' and b <= 0) and not (richting == 'omhoog' and b >= 255) }}"
+              sequence:
+                - variables:
+                    nieuw: "{% set b = state_attr(lamp_entity, 'brightness') | int(0) %}{% set stap = 255 * 0.3 / (looptijd_s | float(5)) %}{% set doel = b + stap if richting == 'omhoog' else b - stap %}{{ [[doel, 0] | max, 255] | min | round(0) | int }}"
+                - choose:
+                    - conditions:
+                        - condition: template
+                          value_template: "{{ nieuw | int(0) > 0 }}"
+                      sequence:
+                        - action: light.turn_on
+                          target:
+                            entity_id: !input lamp
+                          data:
+                            brightness: "{{ nieuw | int(1) }}"
+                  default:
+                    - action: light.turn_off
+                      target:
+                        entity_id: !input lamp
+                - delay:
+                    milliseconds: 300
