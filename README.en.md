@@ -4,7 +4,7 @@
 
 Home Assistant integration for the Peha PHC bus. Control relays, roller shutters and virtual buttons from Home Assistant, and see the inputs and the bus traffic.
 
-> **Test version 0.1.2.** This integration is new and looking for testers with a real Peha PHC installation. Please read the warning below first.
+> **Test version 0.1.3.** This integration is new and looking for testers with a real Peha PHC installation. Please read the warning below first.
 
 ## Warning
 
@@ -93,6 +93,8 @@ The two log sensors have an attribute `pakketten` (a list, as JSON) and an attri
 - *Ingang 0* through *Ingang 15* (input): binary sensors.
 - *Status*: sensor in the form `inputs,LEDs`, two times 16 characters.
 - *Status opvragen* and *Laatste bus-data*.
+- *Laatste knop-event*: the simplified event of the last button action, for example `01.12.2`.
+- *Event 00* through *Event 15*: diagnostic sensors with the last numeric event per button. Off by default.
 
 **Virtual button**
 
@@ -123,9 +125,31 @@ An input button sends several events in a row. A short press, released within on
 
 The integration requests the status of the input module only after the button is released, after 1.5 seconds. While the button is pressed it requests nothing, because the module still reports "high" at that moment, and that reply can stay wrong after the release. If no release event arrives, the integration still requests the status after 10 seconds. Both times are set in `const.py`.
 
+## Input events at a glance
+
+An input button sends its events on the bus. They do not always arrive in the same order, and sometimes an event does not arrive at all. The integration therefore keeps the last event it actually received, and requests the status of the module again after the button is released.
+
+Each input module gets two kinds of extra entities:
+
+- *Laatste knop-event* (last button event): the simplified event of the last button action, for example `01.12.2`. That means module 01, button 12, event 2. The attributes `knop`, `code`, `naam`, `actie` and `tijd` give the details.
+- *Event 00* through *Event 15*: the last numeric event per button. These diagnostic sensors are off by default. Enable them in the entity settings if you want to use them.
+
+| Code | Name | Meaning |
+|---|---|---|
+| 2 | `inflank` | Button pressed |
+| 3 | `kort_uitflank` | Released within 1 second |
+| 4 | `lang` | Pressed longer than 1 second |
+| 5 | `lang_uitflank` | Released after longer than 1 second |
+| 6 | `lang_zeerlang` | Pressed longer than 2 seconds |
+| 7 | `losgelaten` | Released |
+
+The event `peha_phc_ingang` now also contains the field `event`, for example `01.12.2`. You can filter on it in an automation.
+
+Note: a sensor trigger reacts to a change of value. If two identical events follow each other without a change in between, the sensor trigger can fire one time less. The event trigger on `peha_phc_ingang` reacts to every event.
+
 ## Events and services
 
-When an input action happens, the integration fires the event `peha_phc_ingang`. It contains the fields `module`, `adres`, `naam`, `kanaal` and `actie`. The action is `kort_ingedrukt`, `kort_losgelaten`, `lang_ingedrukt`, `lang_losgelaten`, `extra_lang_ingedrukt` or `losgelaten`.
+When an input action happens, the integration fires the event `peha_phc_ingang`. It contains the fields `module`, `adres`, `naam`, `kanaal`, `actie` and `event`. The action is `kort_ingedrukt`, `kort_losgelaten`, `lang_ingedrukt`, `lang_losgelaten`, `extra_lang_ingedrukt` or `losgelaten`.
 
 There are two services:
 
@@ -153,6 +177,7 @@ Common messages:
 - Roller shutters: I read the timer events as the end of the movement in the last chosen direction. This still needs to be confirmed on real hardware.
 - A virtual button sends one command, without a release and without a wait time.
 - Not all PHC versions and module versions have been tested. Tell us if your installation differs.
+- Without a release event the integration requests the status after 10 seconds. If you want that faster, set `HOLD_TIMEOUT` in `const.py` to 2.5. That is less safe, because a status request is then also sent while the button is still held.
 
 ## Testing and feedback
 
