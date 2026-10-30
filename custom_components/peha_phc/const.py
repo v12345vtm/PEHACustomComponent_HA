@@ -1,7 +1,7 @@
-# const.py - Peha PHC versie 0.1.2
+# const.py - Peha PHC versie 0.1.3
 """Constanten voor de Peha PHC-integratie."""
 
-SW_VERSION = "0.1.2"
+SW_VERSION = "0.1.3"
 DOMAIN = "peha_phc"
 
 # Sleutels in de config entry

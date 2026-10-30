@@ -1,4 +1,4 @@
-# hub.py - Peha PHC versie 0.1.2
+# hub.py - Peha PHC versie 0.1.3
 """Verbindingen met de STM-stuureenheid (verzenden) en de RS485-busdongle (ontvangen)."""
 from __future__ import annotations
 
@@ -39,6 +39,7 @@ from .protocol import (
     decode_frame,
     describe_sent,
     format_bus,
+    imd_event_tekst,
     relay_frame,
     status_frame,
     virtual_input_frame,
@@ -290,6 +291,7 @@ class PhcHub:
         for effect in module.apply(msg):
             if effect[0] == "input":
                 _, channel, action = effect
+                module.laatste_event_tijd = module.last_time
                 self.hass.bus.async_fire(
                     EVENT_INGANG,
                     {
@@ -297,6 +299,7 @@ class PhcHub:
                         "adres": module.address,
                         "naam": module.name,
                         "kanaal": channel,
+                        "event": imd_event_tekst(module.phc, channel, module.knop_code[channel]),
                         "actie": action,
                     },
                 )

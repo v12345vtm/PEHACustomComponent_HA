@@ -1,4 +1,4 @@
-# sensor.py - Peha PHC versie 0.1.2
+# sensor.py - Peha PHC versie 0.1.3
 """Sensoren: module-status, laatste bus-data, rolluikstatus per kanaal en de twee logsensoren."""
 from __future__ import annotations
 
@@ -8,9 +8,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import AANTAL_ROLLUIKEN, DOMAIN, MODULE_ROLLUIK
+from .const import AANTAL_INGANGEN, AANTAL_ROLLUIKEN, DOMAIN, MODULE_INGANG, MODULE_ROLLUIK
 from .entity import PhcHubAltijdBeschikbaar, PhcModuleEntity, hub_device_info
 from .hub import PhcHub
+from .protocol import IMD_SIMPLE_NAMEN
 
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities: AddEntitiesCallback) -> None:
@@ -22,6 +23,10 @@ async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities: AddE
         if module.kind == MODULE_ROLLUIK:
             for channel in range(AANTAL_ROLLUIKEN):
                 entities.append(PhcRolluikStatus(hub, module, channel))
+        if module.kind == MODULE_INGANG:
+            entities.append(PhcLaatsteEvent(hub, module))
+            for knop in range(AANTAL_INGANGEN):
+                entities.append(PhcKnopEvent(hub, module, knop))
     async_add_entities(entities)
 
 
@@ -123,3 +128,51 @@ class PhcLogSensor(PhcHubAltijdBeschikbaar, SensorEntity):
         else:
             regels = [f"{r['tijd']}  {r['betekenis']}" for r in self._log]
         return {"pakketten": pakketten, "tekst": "\n".join(regels)}
+
+
+class PhcLaatsteEvent(PhcModuleEntity, SensorEntity):
+    """Vereenvoudigd event van de laatste knopactie, zoals 01.12.2 (module 01, knop 12, event 2).
+
+    Met één waarde kies je in een automatisering de juiste knop en het juiste event.
+    """
+
+    _attr_icon = "mdi:gesture-tap-button"
+
+    def __init__(self, hub: PhcHub, module) -> None:
+        super().__init__(hub, module, "laatste_event", "Laatste knop-event")
+
+    @property
+    def native_value(self) -> str | None:
+        return self._module.laatste_tekst()
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        if self._module.laatste_event is None:
+            return {}
+        knop, code, actie = self._module.laatste_event
+        return {
+            "knop": knop,
+            "code": code,
+            "naam": IMD_SIMPLE_NAMEN.get(code),
+            "actie": actie,
+            "tijd": self._module.laatste_event_tijd,
+        }
+
+
+class PhcKnopEvent(PhcModuleEntity, SensorEntity):
+    """Numerieke status van het laatste event van één knop (Event 00 t/m Event 15).
+
+    Diagnose: standaard uitgeschakeld. Zet hem aan via de entiteitsinstellingen.
+    """
+
+    _attr_icon = "mdi:numeric"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(self, hub: PhcHub, module, knop: int) -> None:
+        super().__init__(hub, module, f"event{knop:02d}", f"Event {knop:02d}")
+        self._knop = knop
+
+    @property
+    def native_value(self) -> int | None:
+        return self._module.knop_code[self._knop]

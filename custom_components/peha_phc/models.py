@@ -1,4 +1,4 @@
-# models.py - Peha PHC versie 0.1.2
+# models.py - Peha PHC versie 0.1.3
 """Toestand per module. Puur Python, zodat de logica los testbaar is."""
 from __future__ import annotations
 
@@ -29,6 +29,7 @@ from .protocol import (
     OUT_OMSCHAKELEN,
     OUT_UIT,
     Decoded,
+    imd_event_tekst,
 )
 
 
@@ -97,6 +98,9 @@ class PhcModule:
     leds: list = field(default_factory=lambda: [None] * AANTAL_INGANGEN)
     covers: list = field(default_factory=lambda: [CoverState() for _ in range(AANTAL_ROLLUIKEN)])
     runtimes: list = field(default_factory=lambda: list(DEFAULT_LOOPTIJDEN))
+    knop_code: list = field(default_factory=lambda: [None] * AANTAL_INGANGEN)
+    laatste_event: tuple | None = None
+    laatste_event_tijd: str = ""
     raw_status: int | None = None
     last_text: str = "nog geen bericht ontvangen"
     last_hex: str = ""
@@ -131,6 +135,13 @@ class PhcModule:
             return " ".join(f"{i}:{cover.status}" for i, cover in enumerate(self.covers))
         return None
 
+    def laatste_tekst(self) -> str | None:
+        """Vereenvoudigd event van de laatste knopactie, bijvoorbeeld 01.12.2."""
+        if self.laatste_event is None:
+            return None
+        knop, code, _actie = self.laatste_event
+        return imd_event_tekst(self.phc, knop, code)
+
     def optimistic_relay(self, channel: int, action: str) -> None:
         if action == "aan":
             self.relays[channel] = True
@@ -153,6 +164,8 @@ class PhcModule:
         if self.kind == MODULE_INGANG:
             if msg.kind == "input_event" and msg.channel is not None:
                 self.inputs[msg.channel] = msg.pressed
+                self.knop_code[msg.channel] = msg.code
+                self.laatste_event = (msg.channel, msg.code, msg.action)
                 effects.append(("input", msg.channel, msg.action))
             elif msg.kind == "input_status" and msg.value is not None:
                 self.inputs = [bool((msg.value >> i) & 1) for i in range(AANTAL_INGANGEN)]

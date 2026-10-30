@@ -1,4 +1,4 @@
-# binary_sensor.py - Peha PHC versie 0.1.2
+# binary_sensor.py - Peha PHC versie 0.1.3
 """Ingangen (IMD): 16 binaire sensoren per ingangsmodule."""
 from __future__ import annotations
 

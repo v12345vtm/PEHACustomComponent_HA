@@ -1,4 +1,4 @@
-# protocol.py - Peha PHC versie 0.1.2
+# protocol.py - Peha PHC versie 0.1.3
 """PHC-protocol: CRC, STM-framing, busparser, decoders en logregels.
 
 Puur Python zonder Home Assistant, zodat het los te testen is.
@@ -91,6 +91,22 @@ def virtual_functie(waarde) -> str | None:
         if tekst in (sleutel, VIRTUAL_NAMEN[sleutel], str(code)):
             return sleutel
     return None
+
+# Vereenvoudigde namen van de ingangsevents, voor automatiseringen. In het bericht stond voor code 4
+# 'lang_' afgebroken; die is hier 'lang'. Alle namen staan op deze ene plek.
+IMD_SIMPLE_NAMEN = {
+    2: "inflank",
+    3: "kort_uitflank",
+    4: "lang",
+    5: "lang_uitflank",
+    6: "lang_zeerlang",
+    7: "losgelaten",
+}
+
+
+def imd_event_tekst(phc: int, knop: int, code: int) -> str:
+    """Vereenvoudigd event, bijvoorbeeld 01.12.2 (module 01, knop 12, event 2)."""
+    return f"{phc:02d}.{knop:02d}.{code}"
 
 MAX_FRAME = 132  # 1 adres + 1 lengte + max. 127 payload + 2 CRC + marge
 

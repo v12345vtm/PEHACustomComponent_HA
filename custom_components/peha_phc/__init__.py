@@ -1,4 +1,4 @@
-# __init__.py - Peha PHC versie 0.1.2
+# __init__.py - Peha PHC versie 0.1.3
 """Peha PHC: koppeling met de Peha PHC-bus via de STM-stuureenheid en een busdongle."""
 from __future__ import annotations
 

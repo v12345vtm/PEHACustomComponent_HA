@@ -1,4 +1,4 @@
-# switch.py - Peha PHC versie 0.1.2
+# switch.py - Peha PHC versie 0.1.3
 """Schakelaars: de twee poorten (standaard aan) en de relais (8 kanalen per module)."""
 from __future__ import annotations
 

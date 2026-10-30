@@ -1,4 +1,4 @@
-# services.yaml - Peha PHC versie 0.1.2
+# services.yaml - Peha PHC versie 0.1.3
 stuur_commando:
   name: Stuur commando (ruw)
   description: Stuurt een ruw commando naar een module via de STM-stuureenheid. Handig om te testen.

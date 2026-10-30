@@ -1,4 +1,4 @@
-# button.py - Peha PHC versie 0.1.2
+# button.py - Peha PHC versie 0.1.3
 """Knoppen: status opvragen, rolluik omhoog/omlaag en virtuele ingangen (klik)."""
 from __future__ import annotations
 
