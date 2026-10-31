@@ -234,6 +234,14 @@ python3 -m unittest discover -s tests -v
 
 Changes per version are in [CHANGELOG.md](CHANGELOG.md). The integration is based on the Node-RED flow for the PHC bus.
 
+
+## Support / Donatie
+
+
+If this has helped you, a small contribution or a coffee is greatly appreciated! 
+👉 [Support via PayPal](https://www.paypal.me/v12345vtm/3)
+Als dit je geholpen heeft, is een kleine bijdrage of een kopje koffie altijd welkom! 
+👉 [Steun via PayPal](https://www.paypal.me/v12345vtm/3)
 ---
 
 # Peha PHC voor Home Assistant (Nederlands)
