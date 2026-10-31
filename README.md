@@ -235,7 +235,7 @@ python3 -m unittest discover -s tests -v
 Changes per version are in [CHANGELOG.md](CHANGELOG.md). The integration is based on the Node-RED flow for the PHC bus.
 
 
-## Support / Donatie
+# Support / Donatie
 
 
 If this has helped you, a small contribution or a coffee is greatly appreciated! 
