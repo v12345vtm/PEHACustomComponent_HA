@@ -240,9 +240,14 @@ Changes per version are in [CHANGELOG.md](CHANGELOG.md). The integration is base
 
 If this has helped you, a small contribution or a coffee is greatly appreciated! 
 👉 [Support via PayPal](https://www.paypal.me/v12345vtm/3)
-Als dit je geholpen heeft, is een kleine bijdrage of een kopje koffie altijd welkom! 
-👉 [Steun via PayPal](https://www.paypal.me/v12345vtm/3)
----
+
+
+
+
+
+
+
+
 
 # Peha PHC voor Home Assistant (Nederlands)
 
@@ -479,3 +484,8 @@ python3 -m unittest discover -s tests -v
 ```
 
 Wijzigingen per versie staan in [CHANGELOG.md](CHANGELOG.md). De integratie is gebaseerd op de Node-RED-flow voor de PHC-bus.
+
+
+#Support
+Als dit je geholpen heeft, is een kleine bijdrage of een kopje koffie altijd welkom! 
+👉 [Steun via PayPal](https://www.paypal.me/v12345vtm/3)
