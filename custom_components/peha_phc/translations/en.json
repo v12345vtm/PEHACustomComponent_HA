@@ -29,7 +29,9 @@
           "ingang": "Add input module (16 inputs)",
           "virtueel": "Add virtual button",
           "verwijder": "Remove module",
-          "poorten": "Change ports"
+          "poorten": "Change ports",
+          "ethernetmodule": "Add ethernet module",
+          "ethernetknop": "Add ethernet button"
         }
       },
       "relais": {
@@ -74,15 +76,35 @@
           "stm_port": "USB cable (STM) port",
           "bus_port": "Bus dongle (RS485) port"
         }
+      },
+      "ethernetmodule": {
+        "title": "Add ethernet module",
+        "data": {
+          "ip": "IP address",
+          "stm": "STM number",
+          "naam": "Name"
+        }
+      },
+      "ethernetknop": {
+        "title": "Add ethernet button",
+        "data": {
+          "ethernet": "Ethernet module",
+          "phc": "PHC number of the input module",
+          "kanaal": "Channel (0-15)",
+          "functie": "Function",
+          "naam": "Name"
+        }
       }
     },
     "error": {
       "adres_bezet": "This PHC number is already in use (relay and shutter modules share the same address).",
       "dubbel": "This virtual button already exists.",
-      "cannot_connect": "One of the ports cannot be opened."
+      "cannot_connect": "One of the ports cannot be opened.",
+      "ongeldig_ip": "This is not a valid IPv4 address, such as 192.168.1.2."
     },
     "abort": {
-      "geen_modules": "There are no modules to remove."
+      "geen_modules": "There are no modules to remove.",
+      "geen_ethernetmodule": "Add an ethernet module first."
     }
   }
 }

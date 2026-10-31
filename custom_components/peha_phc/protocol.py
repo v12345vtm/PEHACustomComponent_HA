@@ -1,10 +1,11 @@
-# protocol.py - Peha PHC versie 0.1.3
+# protocol.py - Peha PHC versie 0.1.5
 """PHC-protocol: CRC, STM-framing, busparser, decoders en logregels.
 
 Puur Python zonder Home Assistant, zodat het los te testen is.
 """
 from __future__ import annotations
 
+import ipaddress
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -440,3 +441,21 @@ def describe_sent(stm_frame: bytes, modkind_of: Callable[[int], str | None]) -> 
     raw = bus + bytes(_crc_bytes(bus))
     frame = BusFrame(address, payload, raw)
     return format_bus(frame, decode_frame(frame), modkind_of(address))
+
+
+# --- Ethernetmodule (IP) --------------------------------------------------------
+
+def ethernet_url(ip: str, stm: int, mod: int, cha: int, evt: int, poort: int = 80) -> str:
+    """Opdracht naar de ethernetmodule, bijvoorbeeld
+    http://192.168.1.2:80/postEvent.html?action=input&STM=0&MOD=3&CHA=0&EVT=2
+    MOD is het PHC-nummer van de ingangsmodule, CHA het kanaal en EVT de functie (zoals bij de virtuele knop)."""
+    return f"http://{ip}:{poort}/postEvent.html?action=input&STM={stm}&MOD={mod}&CHA={cha}&EVT={evt}"
+
+
+def geldig_ipv4(tekst) -> bool:
+    """True als de tekst een IPv4-adres is, zoals 192.168.1.2."""
+    try:
+        ipaddress.IPv4Address(str(tekst).strip())
+    except ValueError:
+        return False
+    return True

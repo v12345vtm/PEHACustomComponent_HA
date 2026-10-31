@@ -1,4 +1,3 @@
-# knop_lamp_dimmen.yaml - Peha PHC blauwdruk, versie 0.1.2
 # knop_lamp_dimmen.yaml - Peha PHC blauwdruk, versie 0.1.2 (Multi-knop)
 blueprint:
   name: Peha knop - kort schakelen, lang dimmen (Meerdere knoppen)

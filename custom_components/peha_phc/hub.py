@@ -1,4 +1,5 @@
-# hub.py - Peha PHC versie 0.1.3
+# hub.py - Peha PHC versie 0.1.5
+# v0.1.5: ethernet-knop stuurt dezelfde aanvraag als curl; verbroken verbinding zonder antwoord telt als ACK
 """Verbindingen met de STM-stuureenheid (verzenden) en de RS485-busdongle (ontvangen)."""
 from __future__ import annotations
 
@@ -10,6 +11,8 @@ from collections import deque
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any
+from urllib.parse import urlsplit
+
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -17,8 +20,15 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_call_later
 
 from .const import (
+    BUS_TYPES,
+    CONF_ETHERNET,
+    CONF_IP,
+    CONF_STM,
     CONF_TYPE,
     DOMAIN,
+    ETHERNET_TIMEOUT,
+    MODULE_ETHERNET,
+    MODULE_ETHERNET_KNOP,
     EVENT_INGANG,
     HOLD_TIMEOUT,
     LOG_LENGTE,
@@ -39,6 +49,7 @@ from .protocol import (
     decode_frame,
     describe_sent,
     format_bus,
+    ethernet_url,
     imd_event_tekst,
     relay_frame,
     status_frame,
@@ -56,6 +67,10 @@ IGNORED_ADDRESSES = (0xFE, 0xE0)  # STM-header en broadcast
 LINKS = ("stm", "bus")
 
 
+# User-Agent zoals curl die stuurt, zodat de aanvraag gelijk is aan het werkende curl-commando.
+ETHERNET_USER_AGENT = "curl/8.5.0"
+
+
 class PhcHub:
     """Beheert de twee seriële verbindingen, de toestand van alle modules en de logs."""
 
@@ -66,6 +81,8 @@ class PhcHub:
         self.bus_port = ""
         self.modules: dict[int, PhcModule] = {}
         self.virtual_buttons: list[dict] = []
+        self.ethernet_modules: list[dict] = []
+        self.ethernet_knoppen: list[dict] = []
         self.enabled: dict[str, bool] = {"stm": True, "bus": True}
         self.stm_connected = False
         self.bus_connected = False
@@ -95,8 +112,10 @@ class PhcHub:
         self.bus_port = bus_port
         self.modules = {}
         self.virtual_buttons = [i for i in items if i[CONF_TYPE] == MODULE_VIRTUEEL]
+        self.ethernet_modules = [i for i in items if i[CONF_TYPE] == MODULE_ETHERNET]
+        self.ethernet_knoppen = [i for i in items if i[CONF_TYPE] == MODULE_ETHERNET_KNOP]
         for item in items:
-            if item[CONF_TYPE] != MODULE_VIRTUEEL:
+            if item[CONF_TYPE] in BUS_TYPES:
                 module = PhcModule.from_config(item)
                 self.modules[module.address] = module
 
@@ -248,6 +267,63 @@ class PhcHub:
         if code is None:
             raise HomeAssistantError(f"Onbekende virtuele functie: {functie}")
         await self._async_send(virtual_input_frame(address, (channel << 4) | code))
+
+    async def async_ethernet_knop(self, ip: str, stm: int, mod: int, cha: int, functie: str) -> None:
+        """Ethernet knop: één HTTP-opdracht naar de ethernetmodule, met precies dezelfde aanvraag als curl."""
+        code = VIRTUAL_CODES.get(functie)
+        if code is None:
+            raise HomeAssistantError(f"Onbekende functie: {functie}")
+        url = ethernet_url(ip, stm, mod, cha, code)
+        doel = urlsplit(url)
+        poort = doel.port or 80
+        host = doel.hostname if poort == 80 else f"{doel.hostname}:{poort}"
+        verzoek = (
+            f"GET {doel.path}?{doel.query} HTTP/1.1\r\n"
+            f"Host: {host}\r\n"
+            f"User-Agent: {ETHERNET_USER_AGENT}\r\n"
+            "Accept: */*\r\n"
+            "\r\n"
+        ).encode("ascii")
+        ack = f"ACK {stm}_{mod}_{cha}_EVT{code}"
+        _LOGGER.debug("Ethernet verzoek naar %s: %r", url, verzoek)
+        try:
+            lezer, schrijver = await asyncio.wait_for(
+                asyncio.open_connection(doel.hostname, poort), ETHERNET_TIMEOUT
+            )
+        except (OSError, asyncio.TimeoutError) as err:
+            raise HomeAssistantError(
+                f"Ethernetmodule {ip} is niet bereikbaar: {str(err) or 'geen verbinding'}"
+            ) from err
+        try:
+            schrijver.write(verzoek)
+            await schrijver.drain()
+        except OSError as err:
+            schrijver.close()
+            raise HomeAssistantError(f"Ethernetmodule {ip} is niet bereikbaar: {err}") from err
+        try:
+            antwoord = await asyncio.wait_for(lezer.read(4096), ETHERNET_TIMEOUT)
+        except asyncio.TimeoutError as err:
+            raise HomeAssistantError(
+                f"Ethernetmodule {ip} gaf geen antwoord binnen {ETHERNET_TIMEOUT} s"
+            ) from err
+        except ConnectionResetError:
+            # De module reset de verbinding na het verzoek (Node-RED: "socket hang up"): dat is de bevestiging.
+            antwoord = b""
+        except OSError as err:
+            raise HomeAssistantError(f"Ethernetmodule {ip} is niet bereikbaar: {err}") from err
+        finally:
+            schrijver.close()
+        if antwoord:
+            regel = antwoord.split(b"\r\n", 1)[0].decode("ascii", "replace")
+            delen = regel.split(" ")
+            if len(delen) >= 2 and delen[0].startswith("HTTP/") and delen[1].isdigit() and int(delen[1]) >= 300:
+                raise HomeAssistantError(f"Ethernetmodule {ip} antwoordde met status {delen[1]}")
+            ack = f"{ack} ({regel})"
+        else:
+            # Geen HTTP-antwoord: de module sloot de verbinding, de opdracht is dan uitgevoerd.
+            ack = f"{ack} (geen HTTP-antwoord)"
+        self._log(self.log_verstuurd, f"HTTP GET {ip}", ack)
+        self._dispatch()
 
     async def _async_poll_all(self) -> None:
         for module in list(self.modules.values()):

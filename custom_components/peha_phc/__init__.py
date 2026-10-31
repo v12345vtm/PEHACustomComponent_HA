@@ -1,4 +1,4 @@
-# __init__.py - Peha PHC versie 0.1.3
+# __init__.py - Peha PHC versie 0.1.5
 """Peha PHC: koppeling met de Peha PHC-bus via de STM-stuureenheid en een busdongle."""
 from __future__ import annotations
 
@@ -13,12 +13,14 @@ from homeassistant.helpers import device_registry as dr
 from .const import (
     AANTAL_INGANGEN,
     CONF_BUS_PORT,
+    CONF_IP,
     CONF_MODULES,
     CONF_STM_PORT,
     DOMAIN,
     MODULE_INGANG,
     PHC_MAX,
     PHC_MIN,
+    ethernet_device_id,
     module_address,
     module_key,
 )
@@ -117,6 +119,7 @@ def _async_cleanup_devices(hass: HomeAssistant, entry: ConfigEntry, hub: PhcHub)
     keep = {(DOMAIN, entry.entry_id)}
     keep |= {(DOMAIN, m.device_id) for m in hub.modules.values()}
     keep |= {(DOMAIN, module_key(v)) for v in hub.virtual_buttons}
+    keep |= {(DOMAIN, ethernet_device_id(m[CONF_IP])) for m in hub.ethernet_modules}
     for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
         ids = {identifier for identifier in device.identifiers if identifier[0] == DOMAIN}
         if ids and not ids & keep:

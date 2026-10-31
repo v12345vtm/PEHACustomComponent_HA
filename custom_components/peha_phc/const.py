@@ -1,7 +1,7 @@
-# const.py - Peha PHC versie 0.1.3
+# const.py - Peha PHC versie 0.1.5
 """Constanten voor de Peha PHC-integratie."""
 
-SW_VERSION = "0.1.3"
+SW_VERSION = "0.1.5"
 DOMAIN = "peha_phc"
 
 # Sleutels in de config entry
@@ -13,6 +13,9 @@ CONF_PHC = "phc"
 CONF_NAAM = "naam"
 CONF_KANAAL = "kanaal"
 CONF_FUNCTIE = "functie"
+CONF_IP = "ip"
+CONF_STM = "stm"
+CONF_ETHERNET = "ethernet"
 
 # Standaard poorten: USB-kabel naar de STM en de RS485-busdongle
 DEFAULT_STM_PORT = "/dev/ttyACM0"
@@ -24,6 +27,9 @@ MODULE_RELAIS = "relais"      # AMD: 8 uitgangen
 MODULE_ROLLUIK = "rolluik"    # JRM: 4 rolluikken
 MODULE_INGANG = "ingang"      # IMD: 16 ingangen
 MODULE_VIRTUEEL = "virtueel"  # virtuele knop op een ingang
+MODULE_ETHERNET = "ethernet"  # ethernetmodule: bereikbaar via IP
+MODULE_ETHERNET_KNOP = "ethernetknop"  # knop die via de ethernetmodule een functie stuurt
+BUS_TYPES = (MODULE_RELAIS, MODULE_ROLLUIK, MODULE_INGANG)  # de modules op de RS485-bus
 
 MODULE_CODES = {MODULE_RELAIS: "AMD", MODULE_ROLLUIK: "JRM", MODULE_INGANG: "IMD"}
 MODULE_LABELS = {
@@ -31,6 +37,8 @@ MODULE_LABELS = {
     MODULE_ROLLUIK: "Rolluik",
     MODULE_INGANG: "Ingang",
     MODULE_VIRTUEEL: "Virtuele knop",
+    MODULE_ETHERNET: "Ethernetmodule",
+    MODULE_ETHERNET_KNOP: "Ethernet knop",
 }
 
 AANTAL_RELAIS = 8
@@ -68,6 +76,11 @@ EVENT_INGANG = "peha_phc_ingang"
 # Aantal regels in de logsensoren (verstuurde en verwerkte pakketten)
 LOG_LENGTE = 20
 
+# Ethernetmodule: opdrachten gaan als HTTP-verzoek naar het IP-adres
+ETHERNET_POORT = 80
+ETHERNET_STANDAARD_IP = "192.168.1.2"
+ETHERNET_TIMEOUT = 5.0  # seconden
+
 
 def module_address(kind: str, phc: int) -> int:
     """Bus-adres op basis van moduletype en PHC-nummer."""
@@ -85,4 +98,13 @@ def module_key(item: dict) -> str:
     """Unieke sleutel van een module-configuratie (voor opties en verwijderen)."""
     if item[CONF_TYPE] == MODULE_VIRTUEEL:
         return virtual_device_id(item)
+    if item[CONF_TYPE] == MODULE_ETHERNET:
+        return f"ethernet_{item[CONF_IP]}"
+    if item[CONF_TYPE] == MODULE_ETHERNET_KNOP:
+        return f"ethernetknop_{item[CONF_ETHERNET]}_{item[CONF_PHC]}_{item[CONF_KANAAL]}_{item[CONF_FUNCTIE]}"
     return f"{item[CONF_TYPE]}_{item[CONF_PHC]}"
+
+
+def ethernet_device_id(ip: str) -> str:
+    """Identifier van het apparaat van een ethernetmodule, bijvoorbeeld ETH_192_168_1_2."""
+    return "ETH_" + ip.replace(".", "_")

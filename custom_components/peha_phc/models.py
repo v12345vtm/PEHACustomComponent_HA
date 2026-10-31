@@ -1,4 +1,4 @@
-# models.py - Peha PHC versie 0.1.3
+# models.py - Peha PHC versie 0.1.5
 """Toestand per module. Puur Python, zodat de logica los testbaar is."""
 from __future__ import annotations
 

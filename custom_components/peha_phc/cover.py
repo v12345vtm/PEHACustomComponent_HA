@@ -1,4 +1,4 @@
-# cover.py - Peha PHC versie 0.1.3
+# cover.py - Peha PHC versie 0.1.5
 """Rolluiken (JRM): cover-entiteiten die altijd bedienbaar blijven.
 
 In rust staat de cover op onbekend, zodat Home Assistant geen knop grijs maakt. Tijdens een
