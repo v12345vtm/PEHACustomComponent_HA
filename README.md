@@ -49,6 +49,10 @@ Already running version 0.1.0 or newer? Then only replace the folder and restart
 
 Optional blueprint: copy `blueprints/automation/peha/knop_lamp_dimmen.yaml` to `config/blueprints/automation/peha/` in your Home Assistant configuration folder, then reload the automations or restart Home Assistant.
 
+youtube foto slideshow
+[![PEHA PHC CustomComponent HA](https://img.youtube.com/vi/jT5LwdjL1uw/0.jpg)](https://www.youtube.com/watch?v=jT5LwdjL1uw)
+
+
 ## Adding modules
 
 Go to **Devices & services → Peha PHC → Configure**. For each module you only enter the PHC number and a name.
@@ -297,6 +301,10 @@ De bedrading van de bus en de stuureenheid staat op de foto hierboven.
 4. Vul de poorten in. De standaard is `/dev/ttyACM0` voor de USB-kabel en `/dev/ttyUSB0` voor de busdongle. Lukt de verbinding niet, dan krijg je een melding. Controleer dan het pad en of Node-RED de poort gebruikt.
 
 Draai je al versie 0.1.0 of nieuwer? Dan vervang je alleen de map en herstart je Home Assistant. Bestaande entiteiten houden hun id.
+
+
+[![PEHA PHC CustomComponent HA](https://img.youtube.com/vi/jT5LwdjL1uw/0.jpg)](https://www.youtube.com/watch?v=jT5LwdjL1uw)
+
 
 Blauwdruk (optioneel): kopieer `blueprints/automation/peha/knop_lamp_dimmen.yaml` naar `config/blueprints/automation/peha/` in je Home Assistant-configuratiemap, en herlaad daarna de automatiseringen of herstart Home Assistant.
 
